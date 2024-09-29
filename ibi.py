@@ -1,6 +1,9 @@
 import logging
 logging.basicConfig(level=logging.INFO, filename='ibi.log', filemode='w')
 
+import os
+from dotenv import load_dotenv
+
 from typing import Literal, Optional
 
 from discord import Intents, Object, HTTPException
@@ -8,26 +11,27 @@ from discord.ext import commands
 
 import asyncio
 
-from utils import setup
-config = setup.config()
-
 from bot import Bot
 from utils.tree import Tree
 
-intents = Intents.all() # Temporary as I work things out
+intents = Intents.all() # evil laugh
 
 async def run():
+    load_dotenv()
+
     bot = Bot(
-        prefix=config['prefix'],
+        prefix=os.getenv("PREFIX"),
         tree_cls=Tree,
-        description=config['description'],
-        intents=intents
+        description=os.getenv("DESCRIPTION"),
+        intents=intents,
+        owner_id=os.getenv("OWNER_ID")
     )
 
     @bot.command()
     @commands.guild_only()
     @commands.is_owner()
     async def sync(ctx: commands.Context, guilds: commands.Greedy[Object], spec: Optional[Literal["~", "*", "^"]] = None) -> None:
+        await ctx.reply("Syncing...")
         if not guilds:
             if spec == "~":
                 synced = await ctx.bot.tree.sync(guild=ctx.guild)
@@ -56,9 +60,8 @@ async def run():
         await ctx.send(f"Synced the tree to {ret}/{len(guilds)}.")
 
     try:
-        await bot.start(config['token'])
+        await bot.start(os.getenv("TOKEN"))
     except KeyboardInterrupt:
-        await db.close()
         await bot.logout()
 
 asyncio.run(run())
