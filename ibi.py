@@ -24,7 +24,7 @@ async def run():
         tree_cls=Tree,
         description=os.getenv("DESCRIPTION"),
         intents=intents,
-        owner_id=os.getenv("OWNER_ID")
+        owner=os.getenv("OWNER_ID")
     )
 
     @bot.command()
