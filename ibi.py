@@ -1,36 +1,43 @@
+import asyncio
 import logging
-logging.basicConfig(level=logging.INFO, filename='ibi.log', filemode='w')
-
 import os
-from dotenv import load_dotenv
-
 from typing import Literal, Optional
 
-from discord import Intents, Object, HTTPException
+from discord import HTTPException, Intents, Object
 from discord.ext import commands
-
-import asyncio
+from dotenv import load_dotenv
+from psycopg_pool import AsyncConnectionPool
 
 from bot import Bot
 from utils.tree import Tree
 
-intents = Intents.all() # evil laugh
+logging.basicConfig(level=logging.INFO, filename="ibi.log", filemode="w")
+intents = Intents.all()  # evil laugh
+
 
 async def run():
     load_dotenv()
+
+    pool = AsyncConnectionPool(os.getenv("DATABASE_URL"), open=False)
+    await pool.open()
 
     bot = Bot(
         prefix=os.getenv("PREFIX"),
         tree_cls=Tree,
         description=os.getenv("DESCRIPTION"),
         intents=intents,
-        owner=os.getenv("OWNER_ID")
+        owner=os.getenv("OWNER_ID"),
+        db=pool,
     )
 
     @bot.command()
     @commands.guild_only()
     @commands.is_owner()
-    async def sync(ctx: commands.Context, guilds: commands.Greedy[Object], spec: Optional[Literal["~", "*", "^"]] = None) -> None:
+    async def sync(
+        ctx: commands.Context,
+        guilds: commands.Greedy[Object],
+        spec: Optional[Literal["~", "*", "^"]] = None,
+    ) -> None:
         await ctx.reply("Syncing...")
         if not guilds:
             if spec == "~":
@@ -45,14 +52,16 @@ async def run():
             else:
                 synced = await ctx.bot.tree.sync()
 
-            await ctx.send(f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
+            await ctx.send(
+                f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}"
+            )
             return
 
         ret = 0
         for guild in guilds:
             try:
                 await ctx.bot.tree.sync(guild=guild)
-            except discord.HTTPException:
+            except HTTPException:
                 pass
             else:
                 ret += 1
@@ -62,6 +71,8 @@ async def run():
     try:
         await bot.start(os.getenv("TOKEN"))
     except KeyboardInterrupt:
+        pool.close()
         await bot.logout()
+
 
 asyncio.run(run())
