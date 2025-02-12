@@ -41,27 +41,63 @@ class Love(commands.Cog, name="love"):
             return await interaction.response.send_message(
                 "That's not an image!", ephemeral=True
             )
-        elif image.size > 10_000_000:
+        elif image is not None and image.size > 10_000_000:
             return await interaction.response.send_message(
                 "That image is too big!", ephemeral=True
             )
 
         await interaction.response.send_modal(LoveLetter(db=self.bot.db, image=image))
 
-    # @group.command(name="test", description="ehe")
-    # async def test(self, interaction: discord.Interaction):
-    #     await interaction.response.defer(ephemeral=True, thinking=True)
+    @group.command(name="view", description="View a love letter given its id.")
+    @commands.has_permissions(administrator=True)
+    async def view(self, interaction: discord.Interaction, id: int):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        async with self.bot.db.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT * FROM love_letters WHERE id = %s", (id,))
+                row = await cur.fetchone()
+                if row is None:
+                    return await interaction.followup.send("That's not a valid love letter id!", ephemeral=True)
+                f, e = self.embed(row[0], row[1], row[2], row[3])
+                await interaction.followup.send(file=f, embed=e)
 
-    #     async with self.bot.db.connection() as conn:
-    #         async with conn.cursor() as cur:
-    #             await cur.execute("SELECT * FROM love_letters")
-    #             rows = await cur.fetchall()
-    #             for id, row in enumerate(rows, start=1):
-    #                 f, e = self.embed(id, row[1], row[2], row[3])
-    #                 await self.channel.send(file=f, embed=e)
+    @group.command(name="viewall", description="View all love letters.")
+    @commands.has_permissions(administrator=True)
+    async def test(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True, thinking=True)
 
-    #     await interaction.followup.send("Done!", ephemeral=True)
+        async with self.bot.db.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT * FROM love_letters ORDER BY id")
+                rows = await cur.fetchall()
+                for row in rows:
+                    f, e = self.embed(row[0], row[1], row[2], row[3])
+                    await interaction.channel.send(file=f, embed=e)
 
+        await interaction.followup.send("Done!", ephemeral=True)
+
+    @group.command(name="1984", description="Remove a love letter.")
+    @commands.has_permissions(administrator=True)
+    async def remove(self, interaction: discord.Interaction, id: int):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+
+        async with self.bot.db.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("DELETE FROM love_letters WHERE id = %s", (id,))
+                print(cur.statusmessage)
+                if cur.statusmessage == "DELETE 1":
+                    await interaction.followup.send("Done!", ephemeral=True)
+                else:
+                    await interaction.followup.send("That's not a valid id!")
+
+    async def post(self):
+        async with self.bot.db.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT * FROM love_letters ORDER BY id")
+                rows = await cur.fetchall()
+                for id, row in enumerate(rows, start=1):
+                    f, e = self.embed(id, row[1], row[2], row[3])
+                    await self.channel.send(file=f, embed=e)
 
 class LoveLetter(discord.ui.Modal, title="New Love Letter"):
     def __init__(self, db, image):
