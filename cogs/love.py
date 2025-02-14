@@ -2,6 +2,8 @@ import logging
 import os
 from io import BytesIO
 
+import asyncio
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -70,9 +72,10 @@ class Love(commands.Cog, name="love"):
             async with conn.cursor() as cur:
                 await cur.execute("SELECT * FROM love_letters ORDER BY id")
                 rows = await cur.fetchall()
-                for row in rows:
-                    f, e = self.embed(row[0], row[1], row[2], row[3])
+                for id, row in enumerate(rows, start=1):
+                    f, e = self.embed(id, row[1], row[2], row[3])
                     await interaction.channel.send(file=f, embed=e)
+                    await asyncio.sleep(60 * 20)
 
         await interaction.followup.send("Done!", ephemeral=True)
 
@@ -90,14 +93,16 @@ class Love(commands.Cog, name="love"):
                 else:
                     await interaction.followup.send("That's not a valid id!")
 
-    async def post(self):
+    async def post(self, id: int, num: int):
         async with self.bot.db.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute("SELECT * FROM love_letters ORDER BY id")
-                rows = await cur.fetchall()
-                for id, row in enumerate(rows, start=1):
-                    f, e = self.embed(id, row[1], row[2], row[3])
-                    await self.channel.send(file=f, embed=e)
+                await cur.execute("SELECT * FROM love_letters WHERE id > %s ORDER BY id", (id,))
+                row = await cur.fetchone()
+                if row["count"] == 0:
+                    return id
+                f, e = self.embed(num, row[1], row[2], row[3])
+                await self.channel.send(file=f, embed=e)
+                return row[0]
 
 class LoveLetter(discord.ui.Modal, title="New Love Letter"):
     def __init__(self, db, image):
@@ -139,4 +144,4 @@ class LoveLetter(discord.ui.Modal, title="New Love Letter"):
 
 
 async def setup(bot):
-    await bot.add_cog(Love(bot))
+    # await bot.add_cog(Love(bot))

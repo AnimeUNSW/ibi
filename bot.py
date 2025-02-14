@@ -14,7 +14,7 @@ class Bot(AutoShardedBot):
 
     async def setup_hook(self):
         for file in os.listdir("cogs"):
-            if file.endswith(".py") and file != "verification.py":
+            if file.endswith(".py"):
                 name = file[:-3]
                 await self.load_extension(f"cogs.{name}")
 
