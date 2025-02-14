@@ -144,4 +144,5 @@ class LoveLetter(discord.ui.Modal, title="New Love Letter"):
 
 
 async def setup(bot):
+    pass
     # await bot.add_cog(Love(bot))
