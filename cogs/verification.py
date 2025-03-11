@@ -1,9 +1,23 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+from discord.ui import Button, View, Modal, TextInput
+
 import os
 import logging
 from zlib import adler32
+
+
+class VerifyModal(discord.ui.Modal):
+	name = discord.ui.TextInput(label="Full Name.", placeholder="Enter your full name")
+	username = discord.ui.TextInput(label="Discord username.", placeholder="Enter your discord username")
+	email = discord.ui.TextInput(label="email:", placeholder="Enter your email")
+	id = discord.ui.TextInput(label="zID:", placeholder="Enter your ZID")
+	
+	async def on_submit(self, interaction: discord.interaction):
+		pass
+		# send data to database and idk maybe send user a DM.
+
 
 class Verification(commands.Cog):
 	def __init__(self, bot):
@@ -61,6 +75,25 @@ class Verification(commands.Cog):
 			return await interaction.followup.send(f"There was an error, sorry! Contact {(await self.bot.application_info()).owner.mention} pls!!", ephemeral=True)
 		await interaction.followup.send(f'{user.mention} is verified!', ephemeral=True)
 		await self.welcome_channel.send(f"Welcome {user.mention}! Feel free to leave an introduction in {self.introduction_channel.mention}")
+
+
+	
+
+	@app_commands.command(name='verifiy-command', description='Verify a member')
+	@app_commands.guild_only()
+	@app_commands.checks.has_permissions(manage_roles=True)
+	@app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
+	async def verify_user(self, interaction: discord.Interaction, user: discord.User):
+		await interaction.response.defer(ephemeral=True, thinking=True)
+		button = Button(label="verify uwu", style=discord.Buttonstyle.green)
+
+		async def button_callback(interaction):
+			await interaction.response.send_modal(VerifyModal())
+
+		button.callback = button_callback
+		view = View()
+		view.add_item(button)
+		await self.welcome_channel.send(f"Welcome {user.mention}! Please verify by clicking the button below!")
 
 
 async def setup(bot):
