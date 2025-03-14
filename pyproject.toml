@@ -1,0 +1,17 @@
+[project]
+name = "ibi-bot"
+version = "0.0.0"
+dependencies = [
+    "discord.py",
+    "dotenv",
+    "psycopg[pool]",
+]
+requires-python = ">=3.8"
+authors = [
+
+]
+maintainers = [
+    { name = "Ethan Lam", email = "z5594011@ad.unsw.edu.au" }
+]
+description = "the ibi discord bot"
+readme = "README.md"
