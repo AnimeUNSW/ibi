@@ -5,6 +5,7 @@ dependencies = [
     "discord.py",
     "dotenv",
     "psycopg[pool]",
+    "mailersend"
 ]
 requires-python = ">=3.12"
 authors = [

@@ -1,9 +1,24 @@
-import discord
-from discord import app_commands
-from discord.ext import commands
+import string
+import random
 import os
 import logging
 from zlib import adler32
+from dataclasses import dataclass
+
+import discord
+from discord import app_commands
+from discord.ext import commands
+from mailersend import emails
+
+
+@dataclass
+class UserInfo:
+	name: str
+	username: str
+	email: str
+	zid: str
+
+
 
 class Verification(commands.Cog):
 	def __init__(self, bot):
@@ -19,6 +34,8 @@ class Verification(commands.Cog):
 			os.getenv("OPT_ROLE")
 		]
 		self.bot.loop.create_task(self.get_everything())
+
+		self.mailer = emails.NewEmail(os.getenv('MAILERSEND_API_KEY'))
 
 	async def get_everything(self):
 		self.guild = await self.bot.fetch_guild(int(self.guild_id or 0))
@@ -61,6 +78,25 @@ class Verification(commands.Cog):
 			return await interaction.followup.send(f"There was an error, sorry! Contact {(await self.bot.application_info()).owner.mention} pls!!", ephemeral=True)
 		await interaction.followup.send(f'{user.mention} is verified!', ephemeral=True)
 		await self.welcome_channel.send(f"Welcome {user.mention}! Feel free to leave an introduction in {self.introduction_channel.mention}")
+
+	async def send_verification_email(self, user_info: UserInfo):
+		token = generate_token()
+		link = await self.make_endpoint(token, user_info)
+		self.mailer.send({
+			'from': {'name': 'Ibi Bot', 'email': 'ibi@bot.com'},
+			'to': {'email': user_info.email},
+			'subject': 'Verification',
+			'html': f'placeholder text: {link}',
+		})
+
+	async def make_endpoint(self, token: str, user_info: UserInfo) -> str:
+		# Stub, figure out how to actually do this and return the link
+		return f'{token}'
+
+
+def generate_token() -> str:
+	token_chars = string.ascii_letters + string.digits
+	return ''.join(random.choices(token_chars, k=16))
 
 
 async def setup(bot):
