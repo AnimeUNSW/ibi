@@ -11,6 +11,7 @@ authors = [
 
 ]
 maintainers = [
+    { name = "Rin", email = "31785428+rin-senpai@users.noreply.github.com" },
     { name = "Ethan Lam", email = "z5594011@ad.unsw.edu.au" }
 ]
 description = "the ibi discord bot"
