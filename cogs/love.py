@@ -59,7 +59,9 @@ class Love(commands.Cog, name="love"):
                 await cur.execute("SELECT * FROM love_letters WHERE id = %s", (id,))
                 row = await cur.fetchone()
                 if row is None:
-                    return await interaction.followup.send("That's not a valid love letter id!", ephemeral=True)
+                    return await interaction.followup.send(
+                        "That's not a valid love letter id!", ephemeral=True
+                    )
                 f, e = self.embed(row[0], row[1], row[2], row[3])
                 await interaction.followup.send(file=f, embed=e)
 
@@ -96,13 +98,16 @@ class Love(commands.Cog, name="love"):
     async def post(self, id: int, num: int):
         async with self.bot.db.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute("SELECT * FROM love_letters WHERE id > %s ORDER BY id", (id,))
+                await cur.execute(
+                    "SELECT * FROM love_letters WHERE id > %s ORDER BY id", (id,)
+                )
                 row = await cur.fetchone()
                 if row["count"] == 0:
                     return id
                 f, e = self.embed(num, row[1], row[2], row[3])
                 await self.channel.send(file=f, embed=e)
                 return row[0]
+
 
 class LoveLetter(discord.ui.Modal, title="New Love Letter"):
     def __init__(self, db, image):

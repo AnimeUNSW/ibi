@@ -5,12 +5,21 @@ import traceback
 import discord
 from discord.ext import commands
 from discord.ext.commands import AutoShardedBot
+from dotenv import load_dotenv
+
+load_dotenv()
+TOKEN = os.getenv("TOKEN")
+
+intents = discord.Intents.default()
+intents.messages = True
+intents.guilds = True
+intents.message_content = True
 
 
 class Bot(AutoShardedBot):
-    def __init__(self, prefix, *args, **kwargs):
-        super().__init__(command_prefix=prefix, *args, **kwargs)
-        self.db = kwargs.pop("db")
+    def __init__(self, prefix="/", *args, **kwargs):
+        super().__init__(command_prefix=prefix, intents=intents, *args, **kwargs)
+        self.db = kwargs.pop("db", None)
 
     async def setup_hook(self):
         for file in os.listdir("cogs"):
@@ -74,3 +83,11 @@ class Bot(AutoShardedBot):
                 print(f"{original.__class__.__name__}: {original}", file=sys.stderr)
         elif isinstance(error, commands.ArgumentParsingError):
             await ctx.send(error)
+
+
+bot = Bot()
+
+if TOKEN:
+    bot.run(TOKEN)
+else:
+    print("no token was found!")

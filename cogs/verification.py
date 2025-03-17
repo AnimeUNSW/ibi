@@ -9,29 +9,27 @@ from zlib import adler32
 
 
 class VerifyModal(discord.ui.Modal):
-	name = discord.ui.TextInput(label="Full Name.", placeholder="Enter your full name")
-	username = discord.ui.TextInput(label="Discord username.", placeholder="Enter your discord username")
-	email = discord.ui.TextInput(label="email:", placeholder="Enter your email")
-	id = discord.ui.TextInput(label="zID:", placeholder="Enter your ZID")
-	
-	async def on_submit(self, interaction: discord.interaction):
-		async with self.bot.db.connection() as conn:
-			async with conn.cursor() as cur:
-				await conn.execute(
-					"INSERT INTO verification_data (user_id, name, username, email, zid) VALUES (%s, %s, %s, %s, %s)",
-					(
-						interaction.user.id,
-						self.name.value,
-						self.username.value,
-						self.email.value,
-						self.id.value,
-					),
-				)
-            	await conn.commit()
+    name = discord.ui.TextInput(label="Full Name.", placeholder="Enter your full name")
+    username = discord.ui.TextInput(label="Discord username.", placeholder="Enter your discord username")
+    email = discord.ui.TextInput(label="email:", placeholder="Enter your email")
+    id = discord.ui.TextInput(label="zID:", placeholder="Enter your ZID")
 
-        await interaction.response.send_message(
-            "Love letter submitted!", ephemeral=True
-        )
+    async def on_submit(self, interaction: discord.Interaction):
+        async with self.bot.db.connection() as conn:
+            async with conn.cursor() as cur:
+                await conn.execute(
+                    "INSERT INTO verification_data (user_id, name, username, email, zid) VALUES (%s, %s, %s, %s, %s)",
+                    (
+                        interaction.user.id,
+                        self.name.value,
+                        self.username.value,
+                        self.email.value,
+                        self.id.value,
+                    ),
+                )
+                await conn.commit()
+
+        await interaction.response.send_message("Love letter submitted!", ephemeral=True)
 
 
 class Verification(commands.Cog):
@@ -92,9 +90,7 @@ class Verification(commands.Cog):
 		await self.welcome_channel.send(f"Welcome {user.mention}! Feel free to leave an introduction in {self.introduction_channel.mention}")
 
 
-	
-
-	@app_commands.command(name='verifiy-command', description='Verify a member')
+	@app_commands.command(name='verify-command', description='Verify a member')
 	@app_commands.guild_only()
 	@app_commands.checks.has_permissions(manage_roles=True)
 	@app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
