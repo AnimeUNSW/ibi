@@ -1,9 +1,16 @@
 import discord
-from discord import app_commands
+from discord import app_commands, ui
 from discord.ext import commands
 import os
 import logging
 from zlib import adler32
+
+class VerifyModal(ui.Modal, title='Verification Modal'):
+    name = ui.TextInput(label='Name')
+    answer = ui.TextInput(label='Answer', style=discord.TextStyle.paragraph)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f'Thanks you for submitting uwu', ephemeral=True)
 
 class Verification(commands.Cog):
 	def __init__(self, bot):
@@ -61,6 +68,14 @@ class Verification(commands.Cog):
 			return await interaction.followup.send(f"There was an error, sorry! Contact {(await self.bot.application_info()).owner.mention} pls!!", ephemeral=True)
 		await interaction.followup.send(f'{user.mention} is verified!', ephemeral=True)
 		await self.welcome_channel.send(f"Welcome {user.mention}! Feel free to leave an introduction in {self.introduction_channel.mention}")
+
+
+	@app_commands.command(name='verify-command', description='Verify a member')
+	@app_commands.guild_only()
+	@app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
+	async def verify_command(self, interaction: discord.Interaction):
+		modal = VerifyModal()
+		await interaction.response.send_modal(modal)
 
 
 async def setup(bot):
