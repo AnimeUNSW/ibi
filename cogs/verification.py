@@ -10,6 +10,15 @@ import discord
 from discord import ui
 
 
+class VerifyView(ui.View):
+    def __init__(self):
+        super().__init__()
+
+    @ui.button(label="Verify", style=discord.ButtonStyle.success)
+    async def verify_button(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_modal(VerifyModal())
+
+
 class VerifyModal(ui.Modal):
     def __init__(self):
         super().__init__(title="Verification Modal")
@@ -19,12 +28,14 @@ class VerifyModal(ui.Modal):
         self.phone = ui.TextInput(label="phone")
         self.zid = ui.TextInput(label="zid (if you are a UNSW student)", required=False)
         self.email = ui.TextInput(label="email (optional)", required=False)
+        self.umineko = ui.TextInput(label="Have you read the umineko visual novel?")
 
         # Add inputs to the modal
         self.add_item(self.full_name)
         self.add_item(self.zid)
         self.add_item(self.email)
         self.add_item(self.phone)
+        self.add_item(self.umineko)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.send_message(
@@ -110,8 +121,10 @@ class Verification(commands.Cog):
     @app_commands.guild_only()
     @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
     async def verify_command(self, interaction: discord.Interaction):
-        modal = VerifyModal()
-        await interaction.response.send_modal(modal)
+        # modal = VerifyModal()
+        # await interaction.response.send_modal(modal)
+        view = VerifyView()
+        await interaction.response.send_message("click below to verify uwu!", view=view)
 
 
 async def setup(bot):
