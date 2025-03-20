@@ -11,17 +11,19 @@ from discord import ui
 
 
 class VerifyView(ui.View):
-    def __init__(self):
+    def __init__(self, db):
         super().__init__()
+        self.db = db
 
     @ui.button(label="Verify", style=discord.ButtonStyle.success)
     async def verify_button(self, interaction: discord.Interaction, button: ui.Button):
-        await interaction.response.send_modal(VerifyModal())
+        await interaction.response.send_modal(VerifyModal(db=self.db))
 
 
 class VerifyModal(ui.Modal):
-    def __init__(self):
+    def __init__(self, db):
         super().__init__(title="Verification Modal")
+        self.db = db
 
         # Define TextInput fields as instance attributes
         self.full_name = ui.TextInput(label="Full Name")
@@ -38,6 +40,13 @@ class VerifyModal(ui.Modal):
         self.add_item(self.umineko)
 
     async def on_submit(self, interaction: discord.Interaction):
+        async with self.db.connection() as conn:
+            await conn.execute(
+                "INSERT INTO verification_table (full_name, phone, zid, email) VALUES (%s, %s, %s)",
+                (self.full_name, self.zid, self.email, self.phone),
+            )
+            await conn.commit()
+
         await interaction.response.send_message(
             "Thank you for submitting uwu", ephemeral=True
         )

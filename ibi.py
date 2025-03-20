@@ -26,7 +26,7 @@ async def run():
         tree_cls=Tree,
         description=os.getenv("DESCRIPTION"),
         intents=intents,
-        owner_ids=list(map(lambda id : int(id),os.getenv("OWNER_IDS").split(","))),
+        owner_ids=list(map(lambda id: int(id), os.getenv("OWNER_IDS").split(","))),
         db=pool,
     )
 
