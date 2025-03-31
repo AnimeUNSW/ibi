@@ -116,8 +116,8 @@ class VerifyModalNonUNSWCN(ui.Modal):
         self.email = ui.TextInput(label="电子邮件")
 
         # Add to the modal
-        self.add_item(self.first_name)
         self.add_item(self.last_name)
+        self.add_item(self.first_name)
         self.add_item(self.phone)
         self.add_item(self.email)
 
