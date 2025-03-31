@@ -17,34 +17,16 @@ class VerifyModalUNSW(ui.Modal):
         self.last_name = ui.TextInput(label="Last Name")
         self.zid = ui.TextInput(label="zID (e.g. z1234567)", required=True)
 
-        # Possibly optional fields
-        self.email = ui.TextInput(
-            label="Email (optional)",
-            required=False,
-            placeholder="If empty, we'll derive from zID",
-        )
-        self.phone = ui.TextInput(label="Phone Number (optional)", required=False)
-
         # Add to the modal
         self.add_item(self.first_name)
         self.add_item(self.last_name)
         self.add_item(self.zid)
-        self.add_item(self.email)
-        self.add_item(self.phone)
 
     async def on_submit(self, interaction: discord.Interaction):
         # Example of deriving email from zID if the user didn't provide one
-        derived_email = (
-            f"{self.zid.value}@ad.unsw.edu.au"
-            if not self.email.value
-            else self.email.value
-        )
-
         await interaction.response.send_message(
             f"Thanks for verifying, {self.first_name.value} {self.last_name.value}!\n"
-            f"zID: {self.zid.value}\n"
-            f"Email: {derived_email}\n"
-            f"Phone: {self.phone.value or 'N/A'}",
+            f"zID: {self.zid.value}\n",
             ephemeral=True,
         )
 
@@ -58,10 +40,8 @@ class VerifyModalNonUNSW(ui.Modal):
         # Required fields for non-UNSW
         self.first_name = ui.TextInput(label="First Name")
         self.last_name = ui.TextInput(label="Last Name")
-
-        # Possibly optional fields
-        self.phone = ui.TextInput(label="Phone Number (optional)", required=False)
-        self.email = ui.TextInput(label="Email (optional)", required=False)
+        self.phone = ui.TextInput(label="Phone Number")
+        self.email = ui.TextInput(label="Email")
 
         # Add to the modal
         self.add_item(self.first_name)
@@ -96,6 +76,78 @@ class VerifyChoiceView(ui.View):
     ):
         """Opens the Non-UNSW modal."""
         await interaction.response.send_modal(VerifyModalNonUNSW())
+
+
+class VerifyModalUNSWCN(ui.Modal):
+    """Modal for UNSW students."""
+
+    def __init__(self):
+        super().__init__(title="UNSW Verification")
+
+        # Required fields for UNSW
+        self.last_name = ui.TextInput(label="姓名")
+        self.first_name = ui.TextInput(label="名字")
+        self.zid = ui.TextInput(label="zID (e.g. z1234567)", required=True)
+
+        # Add to the modal
+        self.add_item(self.last_name)
+        self.add_item(self.first_name)
+        self.add_item(self.zid)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Example of deriving email from zID if the user didn't provide one
+        await interaction.response.send_message(
+            f"Thanks for verifying, {self.first_name.value} {self.last_name.value}!\n"
+            f"zID: {self.zid.value}\n",
+            ephemeral=True,
+        )
+
+
+class VerifyModalNonUNSWCN(ui.Modal):
+    """Modal for non-UNSW students."""
+
+    def __init__(self):
+        super().__init__(title="Non-UNSW Verification")
+
+        # Required fields for non-UNSW
+        self.last_name = ui.TextInput(label="姓名")
+        self.first_name = ui.TextInput(label="名字")
+        self.phone = ui.TextInput(label="电话")
+        self.email = ui.TextInput(label="电子邮件")
+
+        # Add to the modal
+        self.add_item(self.first_name)
+        self.add_item(self.last_name)
+        self.add_item(self.phone)
+        self.add_item(self.email)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Insert into DB or do any other processing as needed
+        await interaction.response.send_message(
+            f"Thanks for verifying, {self.first_name.value} {self.last_name.value}!\n"
+            f"Phone: {self.phone.value or 'N/A'}\n"
+            f"Email: {self.email.value or 'N/A'}",
+            ephemeral=True,
+        )
+
+
+class VerifyChoiceViewCN(ui.View):
+    """A view with two buttons: one for UNSW and one for non-UNSW."""
+
+    def __init__(self):
+        super().__init__()
+
+    @ui.button(label="验证 (UNSW)", style=discord.ButtonStyle.success)
+    async def unsw_button(self, interaction: discord.Interaction, button: ui.Button):
+        """Opens the UNSW modal."""
+        await interaction.response.send_modal(VerifyModalUNSWCN())
+
+    @ui.button(label="验证 (非 UNSW)", style=discord.ButtonStyle.secondary)
+    async def non_unsw_button(
+        self, interaction: discord.Interaction, button: ui.Button
+    ):
+        """Opens the Non-UNSW modal."""
+        await interaction.response.send_modal(VerifyModalNonUNSWCN())
 
 
 class Verification(commands.Cog):
@@ -173,11 +225,29 @@ class Verification(commands.Cog):
         )
 
     @app_commands.command(name="verify-command", description="Verify a member")
+    @app_commands.choices(
+        language=[
+            app_commands.Choice(name="English", value="en"),
+            app_commands.Choice(name="Chinese", value="cn"),
+        ]
+    )
     @app_commands.guild_only()
     @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
-    async def verify_command(self, interaction: discord.Interaction):
-        view = VerifyChoiceView()
-        await interaction.response.send_message("Click below to verify uwu!", view=view)
+    async def verify_command(
+        self, interaction: discord.Interaction, language: app_commands.Choice[str]
+    ):
+        choice = language.value
+
+        if choice == "en":
+            view = VerifyChoiceView()
+            await interaction.response.send_message(
+                "Click below to verify uwu!", view=view
+            )
+        else:
+            view = VerifyChoiceViewCN()
+            await interaction.response.send_message(
+                "Click below to verify uwu!", view=view
+            )
 
 
 async def setup(bot):
