@@ -15,7 +15,7 @@ class VerifyModalUNSW(ui.Modal):
         # Required fields for UNSW
         self.first_name = ui.TextInput(label="First Name")
         self.last_name = ui.TextInput(label="Last Name")
-        self.zid = ui.TextInput(label="zID (e.g. z1234567)", required=True)
+        self.zid = ui.TextInput(label="zID (e.g. z1234567)")
 
         # Add to the modal
         self.add_item(self.first_name)
@@ -65,7 +65,7 @@ class VerifyChoiceView(ui.View):
     def __init__(self):
         super().__init__()
 
-    @ui.button(label="Verify (UNSW)", style=discord.ButtonStyle.success)
+    @ui.button(label="Verify (UNSW)", style=discord.ButtonStyle.primary)
     async def unsw_button(self, interaction: discord.Interaction, button: ui.Button):
         """Opens the UNSW modal."""
         await interaction.response.send_modal(VerifyModalUNSW())
@@ -137,7 +137,7 @@ class VerifyChoiceViewCN(ui.View):
     def __init__(self):
         super().__init__()
 
-    @ui.button(label="验证 (UNSW)", style=discord.ButtonStyle.success)
+    @ui.button(label="验证 (UNSW)", style=discord.ButtonStyle.primary)
     async def unsw_button(self, interaction: discord.Interaction, button: ui.Button):
         """Opens the UNSW modal."""
         await interaction.response.send_modal(VerifyModalUNSWCN())
