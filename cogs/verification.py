@@ -91,20 +91,21 @@ class VerifyModalNonUNSW(ui.Modal):
 class VerifyChoiceView(ui.View):
     """A view with two buttons: one for UNSW and one for non-UNSW."""
 
-    def __init__(self):
+    def __init__(self, db):
         super().__init__()
+        self.db = db
 
     @ui.button(label="Verify (UNSW)", style=discord.ButtonStyle.primary)
     async def unsw_button(self, interaction: discord.Interaction, button: ui.Button):
         """Opens the UNSW modal."""
-        await interaction.response.send_modal(VerifyModalUNSW())
+        await interaction.response.send_modal(VerifyModalUNSW(self.db))
 
     @ui.button(label="Verify (Non-UNSW)", style=discord.ButtonStyle.secondary)
     async def non_unsw_button(
         self, interaction: discord.Interaction, button: ui.Button
     ):
         """Opens the Non-UNSW modal."""
-        await interaction.response.send_modal(VerifyModalNonUNSW())
+        await interaction.response.send_modal(VerifyModalNonUNSW(self.db))
 
 
 class VerifyModalUNSWCN(ui.Modal):
@@ -268,7 +269,7 @@ class Verification(commands.Cog):
         choice = language.value
 
         if choice == "en":
-            view = VerifyChoiceView()
+            view = VerifyChoiceView(self.bot.db)
             await interaction.response.send_message(
                 "Click below to verify uwu!", view=view
             )
