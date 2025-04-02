@@ -27,9 +27,9 @@ class VerifyModalUNSW(ui.Modal):
         # Insert into DB or do any other processing as needed
         async with self.db.connection() as conn:
             await conn.execute(
-                "INSERT INTO users (first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO users (id, first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s, %s)",
                 (
-                    # interaction.user.id,
+                    interaction.user.id,
                     self.first_name.value,
                     self.last_name.value,
                     self.zid.value,
@@ -77,9 +77,9 @@ class VerifyModalNonUNSW(ui.Modal):
         async with self.db.connection() as conn:
             normal_phone_num = self.fix_phone_number(str(self.phone.value))
             await conn.execute(
-                "INSERT INTO users (first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO users (id, first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s, %s)",
                 (
-                    # interaction.user.id,
+                    interaction.user.id,
                     self.first_name.value,
                     self.last_name.value,
                     None,
