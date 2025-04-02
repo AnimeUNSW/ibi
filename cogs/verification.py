@@ -9,8 +9,9 @@ from zlib import adler32
 class VerifyModalUNSW(ui.Modal):
     """Modal for UNSW students."""
 
-    def __init__(self):
+    def __init__(self, db):
         super().__init__(title="UNSW Verification")
+        self.db = db
 
         # Required fields for UNSW
         self.first_name = ui.TextInput(label="First Name")
@@ -23,10 +24,23 @@ class VerifyModalUNSW(ui.Modal):
         self.add_item(self.zid)
 
     async def on_submit(self, interaction: discord.Interaction):
-        # Example of deriving email from zID if the user didn't provide one
+        # Insert into DB or do any other processing as needed
+        async with self.db.connection() as conn:
+            await conn.execute(
+                "INSERT INTO love_letters (id, first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s, %s)",
+                (
+                    interaction.user.id,
+                    self.first_name,
+                    self.last_name,
+                    self.zid,
+                    None,
+                    None,
+                ),
+            )
+            await conn.commit()
+
         await interaction.response.send_message(
-            f"Thanks for verifying, {self.first_name.value} {self.last_name.value}!\n"
-            f"zID: {self.zid.value}\n",
+            f"Thanks for verifying, {self.first_name.value} {self.last_name.value}!\n",
             ephemeral=True,
         )
 
@@ -34,8 +48,9 @@ class VerifyModalUNSW(ui.Modal):
 class VerifyModalNonUNSW(ui.Modal):
     """Modal for non-UNSW students."""
 
-    def __init__(self):
+    def __init__(self, db):
         super().__init__(title="Non-UNSW Verification")
+        self.db = db
 
         # Required fields for non-UNSW
         self.first_name = ui.TextInput(label="First Name")
@@ -51,6 +66,20 @@ class VerifyModalNonUNSW(ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         # Insert into DB or do any other processing as needed
+        async with self.db.connection() as conn:
+            await conn.execute(
+                "INSERT INTO love_letters (id, first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s, %s)",
+                (
+                    interaction.user.id,
+                    self.first_name,
+                    self.last_name,
+                    None,
+                    self.email,
+                    self.phone,
+                ),
+            )
+            await conn.commit()
+
         await interaction.response.send_message(
             f"Thanks for verifying, {self.first_name.value} {self.last_name.value}!\n"
             f"Phone: {self.phone.value or 'N/A'}\n"
