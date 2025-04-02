@@ -7,10 +7,10 @@ create domain email as citext
     check (value ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
 
 create domain phone as varchar(15)
-    check (value ~ '^(\+)[0-9]{6,14}$');
+    check (value ~ '^\+?[0-9]{6,14}$');
 
 create table users (
-    id text primary key,
+    id serial primary key,
     first_name text not null,
     last_name text not null,
     zid zid unique,

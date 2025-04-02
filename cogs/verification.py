@@ -27,12 +27,12 @@ class VerifyModalUNSW(ui.Modal):
         # Insert into DB or do any other processing as needed
         async with self.db.connection() as conn:
             await conn.execute(
-                "INSERT INTO love_letters (id, first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s, %s)",
+                "INSERT INTO users (first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s)",
                 (
-                    interaction.user.id,
-                    self.first_name,
-                    self.last_name,
-                    self.zid,
+                    # interaction.user.id,
+                    self.first_name.value,
+                    self.last_name.value,
+                    self.zid.value,
                     None,
                     None,
                 ),
@@ -64,18 +64,27 @@ class VerifyModalNonUNSW(ui.Modal):
         self.add_item(self.phone)
         self.add_item(self.email)
 
+    def fix_phone_number(self, phone_number: str) -> str:
+        phone_number = phone_number.strip()
+        if phone_number.startswith("04"):
+            return "+61" + phone_number[1:]
+        if not phone_number.startswith("+"):
+            return "+" + phone_number
+        return phone_number
+
     async def on_submit(self, interaction: discord.Interaction):
         # Insert into DB or do any other processing as needed
         async with self.db.connection() as conn:
+            normal_phone_num = self.fix_phone_number(str(self.phone.value))
             await conn.execute(
-                "INSERT INTO love_letters (id, first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s, %s)",
+                "INSERT INTO users (first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s)",
                 (
-                    interaction.user.id,
-                    self.first_name,
-                    self.last_name,
+                    # interaction.user.id,
+                    self.first_name.value,
+                    self.last_name.value,
                     None,
-                    self.email,
-                    self.phone,
+                    self.email.value,
+                    normal_phone_num,
                 ),
             )
             await conn.commit()
