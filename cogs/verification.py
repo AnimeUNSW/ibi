@@ -1,13 +1,23 @@
-import discord
-from discord import app_commands, ui
-from discord.ext import commands
+import string
+import random
 import os
 import logging
 from zlib import adler32
-
+from dataclasses import dataclass
 
 import discord
-from discord import ui
+from discord import app_commands, ui
+from discord.ext import commands
+from mailersend import emails
+import jwt
+
+
+@dataclass
+class UserInfo:
+    name: str
+    username: str
+    email: str
+    zid: str
 
 
 class VerifyView(ui.View):
@@ -339,6 +349,51 @@ class Verification(commands.Cog):
         # await interaction.response.send_modal(modal)
         view = VerifyView()
         await interaction.response.send_message("click below to verify uwu!", view=view)
+
+    @app_commands.command(name='test_email', description='Testing email verification thing')
+    @app_commands.guild_only()
+    @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
+    async def test_email(
+            self,
+            interaction: discord.Interaction,
+            email: str,
+            name: str = 'test_name',
+            username: str = 'test_username',
+            zid: str = '00000000'
+    ):
+        try:
+            await interaction.response.defer(ephemeral=True, thinking=True)
+            res = await self.send_verification_email(UserInfo(
+                name=name,
+                username=username,
+                email=email,
+                zid=zid,
+            ))
+            await interaction.followup.send(f'email sent: {res}', ephemeral=True)
+        except Exception as e:
+            logging.error(e)
+
+    async def send_verification_email(self, user_info: UserInfo):
+        url = 'http://127.0.0.1:8000'
+        link = f'{url}/verify/{jwt.encode({
+            'name': user_info.name,
+            'username': user_info.username,
+            'email': user_info.email,
+            'zid': user_info.zid,
+        }, os.getenv('JWT_TOKEN'), algorithm='HS256')}'
+        mailer = emails.NewEmail(os.getenv('MAILERSEND_API_KEY'))
+        mail_body = {}
+        mail_from = {'name': 'AnimeUNSW', 'email': 'socials@animeunsw.net'}
+        recipients = [{'name': user_info.username, 'email': user_info.email}]
+        mailer.set_mail_from(mail_from, mail_body)
+        mailer.set_mail_to(recipients, mail_body)
+        mailer.set_subject('AnimeUNSW Discord Verification', mail_body)
+        mailer.set_template('z3m5jgr1wmz4dpyo', mail_body)
+        mailer.set_personalization([{
+            'email': user_info.email,
+            'data': {'link': link},
+        }], mail_body)
+        return mailer.send(mail_body)
 
 
 async def setup(bot):

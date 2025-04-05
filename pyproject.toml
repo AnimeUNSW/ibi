@@ -5,6 +5,10 @@ dependencies = [
     "discord.py",
     "dotenv",
     "psycopg[pool,binary]",
+    "mailersend",
+    "pyjwt",
+    "fastapi",
+    "uvicorn",
 ]
 requires-python = ">=3.12"
 authors = [
@@ -14,7 +18,7 @@ maintainers = [
     { name = "Rin", email = "31785428+rin-senpai@users.noreply.github.com" },
     { name = "Ethan Lam", email = "z5594011@ad.unsw.edu.au" },
     { name = "Andy Ruan", email = "z5590336@ad.unsw.edu.au" }
-    
+
 ]
 description = "the ibi discord bot"
 readme = "README.md"
