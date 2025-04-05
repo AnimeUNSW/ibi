@@ -20,35 +20,6 @@ class UserInfo:
     zid: str
 
 
-class VerifyView(ui.View):
-    def __init__(self, db):
-        super().__init__()
-        self.db = db
-
-    @ui.button(label="Verify", style=discord.ButtonStyle.success)
-    async def verify_button(self, interaction: discord.Interaction, button: ui.Button):
-        await interaction.response.send_modal(VerifyModal(db=self.db))
-
-
-class VerifyModal(ui.Modal):
-    def __init__(self, db):
-        super().__init__(title="Verification Modal")
-        self.db = db
-
-        # Define TextInput fields as instance attributes
-        self.full_name = ui.TextInput(label="Full Name")
-        self.phone = ui.TextInput(label="phone")
-        self.zid = ui.TextInput(label="zid (if you are a UNSW student)", required=False)
-        self.email = ui.TextInput(label="email (optional)", required=False)
-        self.umineko = ui.TextInput(label="Have you read the umineko visual novel?")
-
-        # Add inputs to the modal
-        self.add_item(self.full_name)
-        self.add_item(self.zid)
-        self.add_item(self.email)
-        self.add_item(self.phone)
-        self.add_item(self.umineko)
-
 class VerifyModalUNSW(ui.Modal):
     """Modal for UNSW students."""
 
