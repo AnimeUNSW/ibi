@@ -108,7 +108,7 @@ class Verification(commands.Cog):
             logging.error(e)
 
     async def send_verification_email(self, user_info: UserInfo):
-        url = 'http://170.64.219.191:8000'
+        url = 'http://127.0.0.1:8000'
         link = f'{url}/verify/{jwt.encode({
             'name': user_info.name,
             'username': user_info.username,

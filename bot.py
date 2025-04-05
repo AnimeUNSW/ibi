@@ -22,11 +22,6 @@ class Bot(AutoShardedBot):
         print(f"Logged in as {self.user} (ID: {self.user.id})")
         print("------")
 
-        guild_id = os.getenv("GUILD_ID")
-        self.tree.copy_global_to(guild=discord.Object(id=guild_id))
-        synced = await self.tree.sync(guild=discord.Object(id=guild_id))
-        print(f'{synced = }')
-
         await self.change_presence(
             activity=discord.Activity(name="anime", type=discord.ActivityType.watching)
         )
