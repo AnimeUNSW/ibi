@@ -9,6 +9,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from mailersend import emails
+import jwt
 
 
 @dataclass
@@ -86,19 +87,34 @@ class Verification(commands.Cog):
     @app_commands.command(name='test_email', description='Testing email verification thing')
     @app_commands.guild_only()
     @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
-    async def test_email(self, interaction: discord.Interaction, email: str):
-        await interaction.response.defer(ephemeral=True, thinking=True)
-        res = await self.send_verification_email(UserInfo(
-            name='placeholder',
-            username='placeholder',
-            email=email,
-            zid='placeholder',
-        ))
-        await interaction.followup.send(f'email sent: {res}', ephemeral=True)
+    async def test_email(
+            self,
+            interaction: discord.Interaction,
+            email: str,
+            name: str = 'test_name',
+            username: str = 'test_username',
+            zid: str = '00000000'
+    ):
+        try:
+            await interaction.response.defer(ephemeral=True, thinking=True)
+            res = await self.send_verification_email(UserInfo(
+                name=name,
+                username=username,
+                email=email,
+                zid=zid,
+            ))
+            await interaction.followup.send(f'email sent: {res}', ephemeral=True)
+        except Exception as e:
+            logging.error(e)
 
     async def send_verification_email(self, user_info: UserInfo):
-        token = generate_token()
-        link = await self.make_endpoint(token, user_info)
+        url = 'http://170.64.219.191:8000'
+        link = f'{url}/verify/{jwt.encode({
+            'name': user_info.name,
+            'username': user_info.username,
+            'email': user_info.email,
+            'zid': user_info.zid,
+        }, os.getenv('JWT_TOKEN'), algorithm='HS256')}'
         mailer = emails.NewEmail(os.getenv('MAILERSEND_API_KEY'))
         mail_body = {}
         mail_from = {'name': 'AnimeUNSW', 'email': 'socials@animeunsw.net'}
@@ -112,15 +128,6 @@ class Verification(commands.Cog):
             'data': {'link': link},
         }], mail_body)
         return mailer.send(mail_body)
-
-    async def make_endpoint(self, token: str, user_info: UserInfo) -> str:
-        # Stub, figure out how to actually do this and return the link
-        return f'{token}'
-
-
-def generate_token() -> str:
-    token_chars = string.ascii_letters + string.digits
-    return ''.join(random.choices(token_chars, k=16))
 
 
 async def setup(bot):

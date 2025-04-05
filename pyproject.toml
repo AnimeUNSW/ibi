@@ -5,7 +5,10 @@ dependencies = [
     "discord.py",
     "dotenv",
     "psycopg[pool]",
-    "mailersend"
+    "mailersend",
+    "pyjwt",
+    "fastapi",
+    "uvicorn",
 ]
 requires-python = ">=3.12"
 authors = [
