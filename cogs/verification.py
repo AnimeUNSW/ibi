@@ -37,16 +37,23 @@ class VerifyModalUNSW(ui.Modal):
         self.add_item(self.last_name)
         self.add_item(self.zid)
 
+    def fix_zid(self, zid):
+        if zid.startswith("z".casefold()):
+            return
+        return "z" + zid
+                
+
     async def on_submit(self, interaction: discord.Interaction):
         # Insert into DB or do any other processing as needed
         async with self.db.connection() as conn:
+            zid_format = self.fix_zid(str(self.zid.value))
             await conn.execute(
                 "INSERT INTO users (id, first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s, %s)",
                 (
                     interaction.user.id,
                     self.first_name.value,
                     self.last_name.value,
-                    self.zid.value,
+                    zid_format,
                     None,
                     None,
                 ),
