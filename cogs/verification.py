@@ -20,33 +20,29 @@ class UserInfo:
     zid: str
 
 
-class VerifyModalUNSW(ui.Modal):
+def fix_zid(zid):
+    zid = zid.lower()
+    if zid.startswith("z"):
+        return
+    return "z" + zid
+
+
+class VerifyModalUNSW(ui.Modal, title="UNSW Verification"):
     """Modal for UNSW students."""
 
     def __init__(self, db):
-        super().__init__(title="UNSW Verification")
+        super().__init__()
         self.db = db
 
-        # Required fields for UNSW
-        self.first_name = ui.TextInput(label="First Name")
-        self.last_name = ui.TextInput(label="Last Name")
-        self.zid = ui.TextInput(label="zID (e.g. z1234567)")
-
-        # Add to the modal
-        self.add_item(self.first_name)
-        self.add_item(self.last_name)
-        self.add_item(self.zid)
-
-    def fix_zid(self, zid):
-        if zid.startswith("z".casefold()):
-            return
-        return "z" + zid
-                
+    # Required fields for UNSW
+    first_name = ui.TextInput(label="First Name")
+    last_name = ui.TextInput(label="Last Name")
+    zid = ui.TextInput(label="zID (e.g. z1234567)")
 
     async def on_submit(self, interaction: discord.Interaction):
         # Insert into DB or do any other processing as needed
         async with self.db.connection() as conn:
-            zid_format = self.fix_zid(str(self.zid.value))
+            zid_format = fix_zid(str(self.zid.value))
             await conn.execute(
                 "INSERT INTO users (id, first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s, %s)",
                 (
@@ -61,7 +57,7 @@ class VerifyModalUNSW(ui.Modal):
             await conn.commit()
 
         await interaction.response.send_message(
-            f"Thanks for verifying, {self.first_name.value} {self.last_name.value}!\n",
+            f"Thanks for verifying, {self.first_name.value}! Please check your email, {zid_format}@unsw.edu.au, for the next step.",
             ephemeral=True,
         )
 
@@ -73,17 +69,11 @@ class VerifyModalNonUNSW(ui.Modal):
         super().__init__(title="Non-UNSW Verification")
         self.db = db
 
-        # Required fields for non-UNSW
-        self.first_name = ui.TextInput(label="First Name")
-        self.last_name = ui.TextInput(label="Last Name")
-        self.phone = ui.TextInput(label="Phone Number")
-        self.email = ui.TextInput(label="Email")
-
-        # Add to the modal
-        self.add_item(self.first_name)
-        self.add_item(self.last_name)
-        self.add_item(self.phone)
-        self.add_item(self.email)
+    # Required fields for non-UNSW
+    first_name = ui.TextInput(label="First Name")
+    last_name = ui.TextInput(label="Last Name")
+    phone = ui.TextInput(label="Phone Number")
+    email = ui.TextInput(label="Email")
 
     def fix_phone_number(self, phone_number: str) -> str:
         phone_number = phone_number.strip()
@@ -111,9 +101,7 @@ class VerifyModalNonUNSW(ui.Modal):
             await conn.commit()
 
         await interaction.response.send_message(
-            f"Thanks for verifying, {self.first_name.value} {self.last_name.value}!\n"
-            f"Phone: {self.phone.value or 'N/A'}\n"
-            f"Email: {self.email.value or 'N/A'}",
+            f"Thanks for verifying, {self.first_name.value}! Please check your email, {self.email}, for the next step.",
             ephemeral=True,
         )
 
@@ -141,24 +129,34 @@ class VerifyChoiceView(ui.View):
 class VerifyModalUNSWCN(ui.Modal):
     """Modal for UNSW students."""
 
-    def __init__(self):
+    def __init__(self, db):
         super().__init__(title="UNSW Verification")
+        self.db = db
 
-        # Required fields for UNSW
-        self.last_name = ui.TextInput(label="姓名")
-        self.first_name = ui.TextInput(label="名字")
-        self.zid = ui.TextInput(label="zID (e.g. z1234567)", required=True)
-
-        # Add to the modal
-        self.add_item(self.last_name)
-        self.add_item(self.first_name)
-        self.add_item(self.zid)
+    # Required fields for UNSW
+    last_name = ui.TextInput(label="姓名")
+    first_name = ui.TextInput(label="名字")
+    zid = ui.TextInput(label="zID (e.g. z1234567)", required=True)
 
     async def on_submit(self, interaction: discord.Interaction):
-        # Example of deriving email from zID if the user didn't provide one
+        # Insert into DB or do any other processing as needed
+        async with self.db.connection() as conn:
+            zid_format = fix_zid(str(self.zid.value))
+            await conn.execute(
+                "INSERT INTO users (id, first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s, %s)",
+                (
+                    interaction.user.id,
+                    self.first_name.value,
+                    self.last_name.value,
+                    zid_format,
+                    None,
+                    None,
+                ),
+            )
+            await conn.commit()
+
         await interaction.response.send_message(
-            f"Thanks for verifying, {self.first_name.value} {self.last_name.value}!\n"
-            f"zID: {self.zid.value}\n",
+            f"Thanks for verifying, {self.first_name.value}! Please check your email, {zid_format}@unsw.edu.au, for the next step.",
             ephemeral=True,
         )
 
@@ -169,17 +167,11 @@ class VerifyModalNonUNSWCN(ui.Modal):
     def __init__(self):
         super().__init__(title="Non-UNSW Verification")
 
-        # Required fields for non-UNSW
-        self.last_name = ui.TextInput(label="姓名")
-        self.first_name = ui.TextInput(label="名字")
-        self.phone = ui.TextInput(label="电话")
-        self.email = ui.TextInput(label="电子邮件")
-
-        # Add to the modal
-        self.add_item(self.last_name)
-        self.add_item(self.first_name)
-        self.add_item(self.phone)
-        self.add_item(self.email)
+    # Required fields for non-UNSW
+    last_name = ui.TextInput(label="姓名")
+    first_name = ui.TextInput(label="名字")
+    phone = ui.TextInput(label="电话")
+    email = ui.TextInput(label="电子邮件")
 
     async def on_submit(self, interaction: discord.Interaction):
         # Insert into DB or do any other processing as needed
@@ -252,30 +244,6 @@ class Verification(commands.Cog):
             int(os.getenv("INTRODUCTION_CHANNEL") or 0)
         )
 
-    @app_commands.command(name="verify", description="Verify yourself")
-    @app_commands.guild_only()
-    @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
-    async def verify(self, interaction: discord.Interaction, code: int):
-        if adler32(interaction.user.name.encode("utf-8")) == int(code):
-            await interaction.response.defer(ephemeral=True, thinking=True)
-            try:
-                await interaction.user.add_roles(*self.roles)
-            except Exception as e:
-                logging.error(e)
-                return await interaction.followup.send(
-                    f"There was an error, sorry! Contact {(await self.bot.application_info()).owner.mention} pls!!",
-                    ephemeral=True,
-                )
-            await interaction.followup.send("You're verified!", ephemeral=True)
-            await self.welcome_channel.send(
-                f"Welcome {interaction.user.mention}! Feel free to leave an introduction in {self.introduction_channel.mention}"
-            )
-        else:
-            await interaction.response.send_message(
-                "That's not the right code silly! Did you put the right username on the form?",
-                ephemeral=True,
-            )
-
     @app_commands.command(name="permit", description="Verify a member")
     @app_commands.guild_only()
     @app_commands.checks.has_permissions(manage_roles=True)
@@ -295,7 +263,7 @@ class Verification(commands.Cog):
             f"Welcome {user.mention}! Feel free to leave an introduction in {self.introduction_channel.mention}"
         )
 
-    @app_commands.command(name="verify-command", description="Verify a member")
+    @app_commands.command(name="verify", description="Verify a member")
     @app_commands.choices(
         language=[
             app_commands.Choice(name="English", value="en"),
@@ -319,58 +287,59 @@ class Verification(commands.Cog):
             await interaction.response.send_message(
                 "Click below to verify uwu!", view=view
             )
-    @app_commands.command(name="verify-command", description="Verify a member")
-    @app_commands.guild_only()
-    @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
-    async def verify_command(self, interaction: discord.Interaction):
-        # modal = VerifyModal()
-        # await interaction.response.send_modal(modal)
-        view = VerifyView()
-        await interaction.response.send_message("click below to verify uwu!", view=view)
 
-    @app_commands.command(name='test_email', description='Testing email verification thing')
+    @app_commands.command(
+        name="test_email", description="Testing email verification thing"
+    )
     @app_commands.guild_only()
     @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
     async def test_email(
-            self,
-            interaction: discord.Interaction,
-            email: str,
-            name: str = 'test_name',
-            username: str = 'test_username',
-            zid: str = '00000000'
+        self,
+        interaction: discord.Interaction,
+        email: str,
+        name: str = "test_name",
+        username: str = "test_username",
+        zid: str = "00000000",
     ):
         try:
             await interaction.response.defer(ephemeral=True, thinking=True)
-            res = await self.send_verification_email(UserInfo(
-                name=name,
-                username=username,
-                email=email,
-                zid=zid,
-            ))
-            await interaction.followup.send(f'email sent: {res}', ephemeral=True)
+            res = await self.send_verification_email(
+                UserInfo(
+                    name=name,
+                    username=username,
+                    email=email,
+                    zid=zid,
+                )
+            )
+            await interaction.followup.send(f"email sent: {res}", ephemeral=True)
         except Exception as e:
             logging.error(e)
 
     async def send_verification_email(self, user_info: UserInfo):
-        url = 'http://127.0.0.1:8000'
-        link = f'{url}/verify/{jwt.encode({
+        url = "http://127.0.0.1:8000"
+        link = f"{url}/verify/{jwt.encode({
             'name': user_info.name,
             'username': user_info.username,
             'email': user_info.email,
             'zid': user_info.zid,
-        }, os.getenv('JWT_TOKEN'), algorithm='HS256')}'
-        mailer = emails.NewEmail(os.getenv('MAILERSEND_API_KEY'))
+        }, os.getenv('JWT_TOKEN'), algorithm='HS256')}"
+        mailer = emails.NewEmail(os.getenv("MAILERSEND_API_KEY"))
         mail_body = {}
-        mail_from = {'name': 'AnimeUNSW', 'email': 'socials@animeunsw.net'}
-        recipients = [{'name': user_info.username, 'email': user_info.email}]
+        mail_from = {"name": "AnimeUNSW", "email": "socials@animeunsw.net"}
+        recipients = [{"name": user_info.username, "email": user_info.email}]
         mailer.set_mail_from(mail_from, mail_body)
         mailer.set_mail_to(recipients, mail_body)
-        mailer.set_subject('AnimeUNSW Discord Verification', mail_body)
-        mailer.set_template('z3m5jgr1wmz4dpyo', mail_body)
-        mailer.set_personalization([{
-            'email': user_info.email,
-            'data': {'link': link},
-        }], mail_body)
+        mailer.set_subject("AnimeUNSW Discord Verification", mail_body)
+        mailer.set_template("z3m5jgr1wmz4dpyo", mail_body)
+        mailer.set_personalization(
+            [
+                {
+                    "email": user_info.email,
+                    "data": {"link": link},
+                }
+            ],
+            mail_body,
+        )
         return mailer.send(mail_body)
 
 
