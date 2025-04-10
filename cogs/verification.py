@@ -27,6 +27,15 @@ def fix_zid(zid):
     return "z" + zid
 
 
+def fix_phone_number(phone_number: str) -> str:
+    phone_number = phone_number.strip()
+    if phone_number.startswith("04"):
+        return "+61" + phone_number[1:]
+    if not phone_number.startswith("+"):
+        return "+" + phone_number
+    return phone_number
+
+
 class VerifyModalUNSW(ui.Modal, title="UNSW Verification"):
     """Modal for UNSW students."""
 
@@ -62,11 +71,11 @@ class VerifyModalUNSW(ui.Modal, title="UNSW Verification"):
         )
 
 
-class VerifyModalNonUNSW(ui.Modal):
+class VerifyModalNonUNSW(ui.Modal, title="Non-UNSW Verification"):
     """Modal for non-UNSW students."""
 
     def __init__(self, db):
-        super().__init__(title="Non-UNSW Verification")
+        super().__init__()
         self.db = db
 
     # Required fields for non-UNSW
@@ -75,18 +84,10 @@ class VerifyModalNonUNSW(ui.Modal):
     phone = ui.TextInput(label="Phone Number")
     email = ui.TextInput(label="Email")
 
-    def fix_phone_number(self, phone_number: str) -> str:
-        phone_number = phone_number.strip()
-        if phone_number.startswith("04"):
-            return "+61" + phone_number[1:]
-        if not phone_number.startswith("+"):
-            return "+" + phone_number
-        return phone_number
-
     async def on_submit(self, interaction: discord.Interaction):
         # Insert into DB or do any other processing as needed
         async with self.db.connection() as conn:
-            normal_phone_num = self.fix_phone_number(str(self.phone.value))
+            normal_phone_num = fix_phone_number(str(self.phone.value))
             await conn.execute(
                 "INSERT INTO users (id, first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s, %s)",
                 (
@@ -110,15 +111,23 @@ class VerifyChoiceView(ui.View):
     """A view with two buttons: one for UNSW and one for non-UNSW."""
 
     def __init__(self, db):
-        super().__init__()
+        super().__init__(timeout=None)
         self.db = db
 
-    @ui.button(label="Verify (UNSW)", style=discord.ButtonStyle.primary)
+    @ui.button(
+        label="Verify (UNSW)",
+        style=discord.ButtonStyle.primary,
+        custom_id="persistent_view:unsw",
+    )
     async def unsw_button(self, interaction: discord.Interaction, button: ui.Button):
         """Opens the UNSW modal."""
         await interaction.response.send_modal(VerifyModalUNSW(self.db))
 
-    @ui.button(label="Verify (Non-UNSW)", style=discord.ButtonStyle.secondary)
+    @ui.button(
+        label="Verify (Non-UNSW)",
+        style=discord.ButtonStyle.secondary,
+        custom_id="persistent_view:non_unsw",
+    )
     async def non_unsw_button(
         self, interaction: discord.Interaction, button: ui.Button
     ):
@@ -126,11 +135,11 @@ class VerifyChoiceView(ui.View):
         await interaction.response.send_modal(VerifyModalNonUNSW(self.db))
 
 
-class VerifyModalUNSWCN(ui.Modal):
+class VerifyModalUNSWCN(ui.Modal, title="UNSW Verification"):
     """Modal for UNSW students."""
 
     def __init__(self, db):
-        super().__init__(title="UNSW Verification")
+        super().__init__()
         self.db = db
 
     # Required fields for UNSW
@@ -155,17 +164,19 @@ class VerifyModalUNSWCN(ui.Modal):
             )
             await conn.commit()
 
+        # TODO: make it chinese
         await interaction.response.send_message(
             f"Thanks for verifying, {self.first_name.value}! Please check your email, {zid_format}@unsw.edu.au, for the next step.",
             ephemeral=True,
         )
 
 
-class VerifyModalNonUNSWCN(ui.Modal):
+class VerifyModalNonUNSWCN(ui.Modal, title="Non-UNSW Verification"):
     """Modal for non-UNSW students."""
 
-    def __init__(self):
-        super().__init__(title="Non-UNSW Verification")
+    def __init__(self, db):
+        super().__init__()
+        self.db = db
 
     # Required fields for non-UNSW
     last_name = ui.TextInput(label="姓名")
@@ -175,10 +186,23 @@ class VerifyModalNonUNSWCN(ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         # Insert into DB or do any other processing as needed
+        async with self.db.connection() as conn:
+            normal_phone_num = fix_phone_number(str(self.phone.value))
+            await conn.execute(
+                "INSERT INTO users (id, first_name, last_name, zid, email, phone_number) VALUES (%s, %s, %s, %s, %s, %s)",
+                (
+                    interaction.user.id,
+                    self.first_name.value,
+                    self.last_name.value,
+                    None,
+                    self.email.value,
+                    normal_phone_num,
+                ),
+            )
+            await conn.commit()
+
         await interaction.response.send_message(
-            f"Thanks for verifying, {self.first_name.value} {self.last_name.value}!\n"
-            f"Phone: {self.phone.value or 'N/A'}\n"
-            f"Email: {self.email.value or 'N/A'}",
+            f"Thanks for verifying, {self.first_name.value}! Please check your email, {self.email}, for the next step.",
             ephemeral=True,
         )
 
@@ -186,31 +210,21 @@ class VerifyModalNonUNSWCN(ui.Modal):
 class VerifyChoiceViewCN(ui.View):
     """A view with two buttons: one for UNSW and one for non-UNSW."""
 
-    def __init__(self):
+    def __init__(self, db):
         super().__init__()
+        self.db = db
 
     @ui.button(label="验证 (UNSW)", style=discord.ButtonStyle.primary)
     async def unsw_button(self, interaction: discord.Interaction, button: ui.Button):
         """Opens the UNSW modal."""
-        await interaction.response.send_modal(VerifyModalUNSWCN())
+        await interaction.response.send_modal(VerifyModalUNSWCN(self.db))
 
     @ui.button(label="验证 (非 UNSW)", style=discord.ButtonStyle.secondary)
     async def non_unsw_button(
         self, interaction: discord.Interaction, button: ui.Button
     ):
         """Opens the Non-UNSW modal."""
-        await interaction.response.send_modal(VerifyModalNonUNSWCN())
-
-        async with self.db.connection() as conn:
-            await conn.execute(
-                "INSERT INTO verification_table (full_name, phone, zid, email) VALUES (%s, %s, %s)",
-                (self.full_name, self.zid, self.email, self.phone),
-            )
-            await conn.commit()
-
-        await interaction.response.send_message(
-            "Thank you for submitting uwu", ephemeral=True
-        )
+        await interaction.response.send_modal(VerifyModalNonUNSWCN(self.db))
 
 
 class Verification(commands.Cog):
@@ -283,7 +297,7 @@ class Verification(commands.Cog):
                 "Click below to verify uwu!", view=view
             )
         else:
-            view = VerifyChoiceViewCN()
+            view = VerifyChoiceViewCN(self.bot.db)
             await interaction.response.send_message(
                 "Click below to verify uwu!", view=view
             )
