@@ -269,7 +269,8 @@ class Verification(commands.Cog):
         )
 
     async def verify_user(self, user: discord.User, lang: SupportedLanguage = 'en'):
-        await user.add_roles(*self.roles)
+        # member = await self.guild.fetch_member(user.id)
+        # await member.add_roles(*self.roles)
         await self.welcome_channel.send(
             translations[lang]['welcome_message'].format(
                 user=user, introduction_channel=self.introduction_channel
