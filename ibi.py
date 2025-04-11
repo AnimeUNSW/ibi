@@ -7,7 +7,6 @@ from discord import HTTPException, Intents, Object
 from discord.ext import commands
 from dotenv import load_dotenv
 from psycopg_pool import AsyncConnectionPool
-from server import run_server
 
 from bot import Bot
 from utils.tree import Tree
@@ -70,6 +69,8 @@ async def run():
         await ctx.send(f"Synced the tree to {ret}/{len(guilds)}.")
 
     # Run server for verification
+    # Import has to be delayed because env vars need to get loaded
+    from server import run_server
     await run_server(bot)
 
     try:
