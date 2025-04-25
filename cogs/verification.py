@@ -155,22 +155,21 @@ def verify_modal_factory(lang: Literal['en', 'cn']):
 
     class ReturnModal(ui.View):
         """A view with two buttons: one for UNSW and one for non-UNSW."""
+        def __init__(self):
+            super().__init__(timeout=None)
 
-        @ui.button(label=t['choice']['unsw'], style=discord.ButtonStyle.primary)
+        @ui.button(label=t['choice']['unsw'], style=discord.ButtonStyle.primary, custom_id=f'verify:unsw:{lang}')
         async def unsw_button(self, interaction: discord.Interaction, button: ui.Button):
             """Opens the UNSW modal."""
             await interaction.response.send_modal(VerifyModalUNSW())
 
-        @ui.button(label=t['choice']['non-unsw'], style=discord.ButtonStyle.secondary)
+        @ui.button(label=t['choice']['non-unsw'], style=discord.ButtonStyle.secondary, custom_id=f'verify:non-unsw:{lang}')
         async def non_unsw_button(self, interaction: discord.Interaction, button: ui.Button):
             """Opens the Non-UNSW modal."""
             await interaction.response.send_modal(VerifyModalNonUNSW())
 
     class VerifyModalABC(ABC, ui.Modal):
         """Abstract class for data input modals."""
-
-        def __init__(self) -> None:
-            super().__init__(timeout=None)
 
         @property
         @abstractmethod
@@ -209,7 +208,7 @@ def verify_modal_factory(lang: Literal['en', 'cn']):
         """Modal for UNSW students."""
         first_name = ui.TextInput(label=t['fields']['first_name'], required=True)
         last_name = ui.TextInput(label=t['fields']['last_name'], required=True)
-        phone = ui.TextInput(label=t['fields']['phone'])
+        phone = ui.TextInput(label=t['fields']['phone'], required=True)
         email = ui.TextInput(label=t['fields']['email'], required=True)
 
         @property
@@ -252,6 +251,14 @@ class Verification(commands.Cog):
         ]
         self.bot.loop.create_task(self.get_everything())
 
+        self.views = {
+            lang: verify_modal()
+            for lang, verify_modal in VerifyChoiceView.items()
+        }
+
+        for view in self.views.values():
+            bot.add_view(view)
+
     async def get_everything(self):
         self.guild = await self.bot.fetch_guild(int(self.guild_id or 0))
 
@@ -269,8 +276,8 @@ class Verification(commands.Cog):
         )
 
     async def verify_user(self, user: discord.User, lang: SupportedLanguage = 'en'):
-        # member = await self.guild.fetch_member(user.id)
-        # await member.add_roles(*self.roles)
+        member = await self.guild.fetch_member(user.id)
+        await member.add_roles(*self.roles)
         await self.welcome_channel.send(
             translations[lang]['welcome_message'].format(
                 user=user, introduction_channel=self.introduction_channel
@@ -306,7 +313,7 @@ class Verification(commands.Cog):
         self, interaction: discord.Interaction, language: app_commands.Choice[str]
     ):
         lang: SupportedLanguage = language.value
-        view = VerifyChoiceView[lang]()
+        view = self.views[lang]
         await interaction.response.send_message(
             translations[lang]['button_text'],
             view=view,
