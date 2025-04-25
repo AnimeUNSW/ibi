@@ -284,10 +284,15 @@ class Verification(commands.Cog):
             )
         )
 
-    @app_commands.command(name="permit", description="Verify a member")
-    @app_commands.guild_only()
+    verify_group = app_commands.Group(
+        name="verify",
+        description="Verification commands",
+        guild_only=True,
+        guild_ids=[int(os.getenv("GUILD_ID") or 0)],
+    )
+
+    @verify_group.command(name="user", description="Verify a member")
     @app_commands.checks.has_permissions(manage_roles=True)
-    @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
     async def permit(self, interaction: discord.Interaction, user: discord.User):
         await interaction.response.defer(ephemeral=True, thinking=True)
         try:
@@ -300,15 +305,13 @@ class Verification(commands.Cog):
             )
         await interaction.followup.send(f"{user.mention} is verified!", ephemeral=True)
 
-    @app_commands.command(name="verify", description="Verify a member")
+    @verify_group.command(name="message", description="Get the verification message")
     @app_commands.choices(
         language=[
             app_commands.Choice(name="English", value="en"),
             app_commands.Choice(name="Chinese", value="cn"),
         ]
     )
-    @app_commands.guild_only()
-    @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
     async def verify_command(
         self, interaction: discord.Interaction, language: app_commands.Choice[str]
     ):
