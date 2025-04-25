@@ -5,16 +5,26 @@ import traceback
 import jwt
 import uvicorn
 from fastapi import FastAPI
+from starlette.responses import HTMLResponse
 
 from bot import Bot
-from cogs.verification import Verification, translations
+from cogs.verification import translations
 from database import UserInfo, add_user_to_db
 
 app = FastAPI()
 bot: Bot
 
 
-@app.get("/verify/{token}")
+html_template = """
+<html>
+    <body>
+        <pre>{}</pre>
+    </body>
+</html>
+"""
+
+
+@app.get("/verify/{token}", response_class=HTMLResponse)
 async def verify(token: str):
     try:
         user_info = UserInfo.from_dict(jwt.decode(token, os.getenv("JWT_TOKEN"), algorithms=["HS256"]))
@@ -28,9 +38,11 @@ async def verify(token: str):
         await add_user_to_db(bot.db, user_info)
         await verif_cog.verify_user(user, user_info.lang)
     except Exception as e:
-        return {'message': t['endpoint']['fail'].format(traceback.format_exception(e))}
+        return html_template.format(t['endpoint']['fail'].format(
+                '\n'.join(traceback.format_exception(e))
+            ))
 
-    return {"message": t['endpoint']['success']}
+    return html_template.format(t['endpoint']['success'])
 
 
 async def run_server(local_bot: Bot):

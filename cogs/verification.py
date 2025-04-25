@@ -43,7 +43,7 @@ translations: dict[SupportedLanguage, D[str]] = {
                            'Feel free to leave an introduction in {introduction_channel.mention}',
         'endpoint': {
             'success': 'Successfully verified!',
-            'fail': 'Verification was not successful: {}',
+            'fail': 'Verification was not successful:\n{}',
         },
     },
     'cn': {
