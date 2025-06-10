@@ -2,6 +2,7 @@ import os
 import re
 from dataclasses import dataclass
 from typing import Literal, Self
+from urllib.request import urlopen
 
 import email_validator
 import hikari
@@ -9,8 +10,8 @@ import jwt
 import lightbulb
 import miru
 from mailersend import emails
+import phonenumbers
 from psycopg_pool import AsyncConnectionPool
-from urllib.request import urlopen
 
 from bot import OwnerMention
 
@@ -60,13 +61,15 @@ class UserInfo:
             try:
                 email_info = email_validator.validate_email(self.email, check_deliverability=False)
                 self.email = email_info.normalized
-            except:
+            except Exception as e:
+                print(self.email + str(e))
                 return t["validation"]["email"]
         if self.phone is not None:
             try:
-                z = phonenumbers.parse(self.phone, "AU")
+                x = phonenumbers.parse(self.phone, "AU")
                 self.phone = phonenumbers.format_number(x, phonenumbers.PhoneNumberFormat.E164)
-            except:
+            except Exception as e:
+                print(self.phone + str(e))
                 return t["validation"]["phone"]
 
         return None
@@ -122,13 +125,13 @@ translations: dict[SupportedLanguage, D[str]] = {
             "email": "Please enter a valid email. (e.g. ibi@animeunsw.net)",
             "phone": "Please enter a valid phone number (e.g. 0412345678 or +61412345678)",
         },
-        "confirmed": "Thanks for verifying, {user_info.first_name}!"
+        "confirmed": "Thanks for verifying, {user_info.first_name}! "
         "Please check your email, {user_info.email}, for the next step.",
         "welcome_message": "Welcome {user}! "
         "Feel free to leave an introduction in {introduction_channel}",
         "endpoint": {
             "success": "Successfully verified!",
-            "fail": "Verification was not successful, please contact @kuru.rin on Discord for support.",
+            "fail": "Verification was not successful, please contact {owner} on Discord for support.",
             "malformed": "Malformed input!",
         },
         "message": {
@@ -144,45 +147,44 @@ translations: dict[SupportedLanguage, D[str]] = {
     "cn": {
         "choice": {
             "unsw": "验证 (UNSW)",
-            "non-unsw": "验证 (Non-UNSW)",
+            "non-unsw": "验证 (非UNSW)",
         },
         "fields": {
-            "first_name": "姓名",
-            "last_name": "名字",
+            "first_name": "名",
+            "last_name": "姓",
             "zid": "zID",
             "email": "电子邮件",
-            "phone": "电话",
+            "phone": "电话号码",
         },
         "field_hints": {
             "first_name": "",
             "last_name": "",
-            "zid": "E.g. z1234567",
-            "email": "E.g. ibi@animeunsw.net",
-            "phone": "E.g. 0412345678 or +61412345678",
+            "zid": "例如 z1234567",
+            "email": "例如 lbi@animeunsw.net",
+            "phone": "例如 0412345678 或 +61412345678",
         },
         "validation": {
-            "first_name": "名字是必填项。",
-            "last_name": "姓氏是必填项。",
-            "zid": "无效的zID，请输入一个7位数字。",
-            "email": "Please enter a valid email. (e.g. ibi@animeunsw.net)",
-            "phone": "Please enter a valid phone number (e.g. 0412345678 or +61412345678)",
+            "first_name": "名是必填项。",
+            "last_name": "姓是必填项。",
+            "zid": "请输入有效的zID（例如 z1234567）",
+            "email": "请输入有效的电子邮件（例如 lbi@animeunsw.net）",
+            "phone": "请输入有效的电话号码（例如 0412345678 或 +61412345678）",
         },
-        "confirmed": "感谢您的验证，{user_info.first_name}！ "
-        "请查看您的邮箱 {user_info.email}，以进行下一步操作。",
-        "welcome_message": "欢迎 {user.mention}！ "
-        "'欢迎在 {introduction_channel} 频道留下你的自我介绍～",
+        "confirmed": "感谢您的验证，{user_info.first_name}！"
+        "请检查您的电子邮件，{user_info.email}，以获取下一步指示。",
+        "welcome_message": "欢迎 {user}！ 欢迎在 {introduction_channel} 留下自我介绍",
         "endpoint": {
             "success": "验证成功！",
-            "fail": "Verification was not successful, please contact @kuru.rin on Discord for support.",
-            "malformed": "Malformed input!",
+            "fail": "验证未成功，请在Discord上联系{owner}寻求帮助。",
+            "malformed": "输入格式错误！",
         },
         "message": {
-            "initial": "Welcome to AUNSW! If you can see this then you're unverified, but don't worry; it's a simple process to get you verified.",
-            "steps1": '1. Depending on whether you\'re a UNSW student or not, fill out the corresponding form by pressing on one of buttons below.\n2. If you filling out the UNSW form, you will receive a message in your student email, else if you filled out the Non-UNSW form, it will be sent to the email you provided.\n3. Click on the button in the email labeled "Verify," as shown below.',
-            "steps2": "4. Profit!",
+            "initial": "欢迎来到UNSW！如果您看到此消息，则表示您尚未通过验证，但请别担心；验证过程很简单。",
+            "steps1": "1. 根据您是否是UNSW学生，通过点击以下按钮之一填写相应的表格。\n2. 如果您填写的是UNSW表格，您将在您的学生邮箱中收到一条消息；如果您填写的是非UNSW表格，则会发送到您提供的电子邮件地址。\n3. 点击电子邮件中标有“Verify”的按钮，如下图所示。",
+            "steps2": "4. 搞定！",
             "buttons": {
-                "unsw": "'验证 (UNSW)",
-                "non-unsw": "验证 (Non-UNSW)",
+                "unsw": "验证 (UNSW)",
+                "non-unsw": "验证 (非UNSW)",
             },
         },
     },

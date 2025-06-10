@@ -14,6 +14,7 @@ from bot.extensions.verification import UserInfo, add_user_to_db, translations, 
 app = FastAPI()
 client: Client
 db: AsyncConnectionPool
+owner: str
 
 html_template = """
 <html>
@@ -37,7 +38,7 @@ async def verify(token: str):
         await verify_user(user_info.id, client.rest, user_info.lang)
     except Exception as e:
         print(e)
-        return html_template.format(t["endpoint"]["fail"])
+        return html_template.format(t["endpoint"]["fail"].format(owner=owner))
 
     return html_template.format(t["endpoint"]["success"])
 
@@ -45,8 +46,10 @@ async def verify(token: str):
 async def run_server(local_client: Client, global_db: AsyncConnectionPool):
     global client
     global db
+    global owner
     client = local_client
     db = global_db
+    owner = "@" + (await client.rest.fetch_user(int(os.getenv("OWNER_ID")))).username
     config = uvicorn.Config(app, host="0.0.0.0", port=8000)
     server = uvicorn.Server(config)
     asyncio.create_task(server.serve())
