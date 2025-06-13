@@ -180,7 +180,7 @@ translations: dict[SupportedLanguage, D[str]] = {
         },
         "message": {
             "initial": "欢迎来到UNSW！如果您看到此消息，则表示您尚未通过验证，但请别担心；验证过程很简单。",
-            "steps1": "1. 根据您是否是UNSW学生，通过点击以下按钮之一填写相应的表格。\n2. 如果您填写的是UNSW表格，您将在您的学生邮箱中收到一条消息；如果您填写的是非UNSW表格，则会发送到您提供的电子邮件地址。\n3. 点击电子邮件中标有“Verify”的按钮，如下图所示。",
+            "steps1": "1. 根据您是否是UNSW学生，通过点击以下按钮之一填写相应的表格。\n2. 如果您填写的是UNSW表格，您将在您的学生邮箱中收到一条消息；如果您填写的是非UNSW表格，则会发送到您提供的电子邮件地址。\n3. 点击电子邮件中标有“验证”的按钮，如下图所示。",
             "steps2": "4. 搞定！",
             "buttons": {
                 "unsw": "验证 (UNSW)",
@@ -201,7 +201,7 @@ def verification_message_components(lang: SupportedLanguage):
                 hikari.impl.MediaGalleryComponentBuilder(
                     items=[
                         hikari.impl.MediaGalleryItemBuilder(
-                            media="src/bot/images/verification_email.png",
+                            media=f"src/bot/images/verification_email_{lang}.png",
                         ),
                     ]
                 ),
