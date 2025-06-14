@@ -25,7 +25,7 @@ class UserInfo:
     lang: SupportedLanguage
     first_name: str
     last_name: str
-    email: str = None
+    email: str | None = None
     zid: str | None = None
     phone: str | None = None
     id: int = 0
