@@ -1,0 +1,42 @@
+import os
+
+import hikari
+import lightbulb
+import miru
+from dotenv import load_dotenv
+from psycopg_pool import AsyncConnectionPool
+
+load_dotenv()
+
+from bot import extensions
+
+bot = hikari.GatewayBot(os.getenv("TOKEN"), logs="DEBUG")
+client = lightbulb.client_from_app(bot)
+
+miru_client = miru.Client(bot, ignore_unknown_interactions=True)
+client.di.registry_for(lightbulb.di.Contexts.DEFAULT).register_value(miru.Client, miru_client)
+
+type OwnerMention = str
+client.di.registry_for(lightbulb.di.Contexts.DEFAULT).register_value(
+    OwnerMention, "<@" + os.getenv("OWNER_ID") + ">"
+)
+
+
+@bot.listen(hikari.StartingEvent)
+async def on_starting(_: hikari.StartingEvent) -> None:
+    pool = AsyncConnectionPool(os.getenv("DATABASE_URL"))
+    await pool.open()
+    client.di.registry_for(lightbulb.di.Contexts.DEFAULT).register_value(
+        AsyncConnectionPool, pool, teardown=pool.close
+    )
+
+    from server import run_server
+
+    await run_server(client, pool)
+
+    await client.load_extensions_from_package(extensions)
+    await client.start()
+
+
+# Enable lightbulb to do dependency cleanup
+bot.subscribe(hikari.StoppingEvent, client.stop)
