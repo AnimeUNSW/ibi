@@ -132,7 +132,6 @@ translations: dict[SupportedLanguage, D[str]] = {
         "endpoint": {
             "success": "Successfully verified!",
             "fail": "Verification was not successful, please contact {owner} on Discord for support.",
-            "malformed": "Malformed input!",
         },
         "message": {
             "initial": "Welcome to AUNSW! If you can see this then you're unverified, but don't worry; it's a simple process to get you verified.",
@@ -176,7 +175,6 @@ translations: dict[SupportedLanguage, D[str]] = {
         "endpoint": {
             "success": "验证成功！",
             "fail": "验证未成功，请在Discord上联系{owner}寻求帮助。",
-            "malformed": "输入格式错误！",
         },
         "message": {
             "initial": "欢迎来到UNSW！如果您看到此消息，则表示您尚未通过验证，但请别担心；验证过程很简单。",

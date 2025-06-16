@@ -31,8 +31,9 @@ async def verify(token: str):
         user_info = UserInfo.from_dict(
             jwt.decode(token, os.getenv("JWT_TOKEN"), algorithms=["HS256"])
         )
-        if user_info.validate() is not None:
-            return html_template.format(t["endpoint"]["malformed"])
+        err = user_info.validate()
+        if err is not None:
+            raise Exception(f"Malformed user_info: {err}")
         t = translations[user_info.lang]
         await add_user_to_db(db, user_info)
         await verify_user(user_info.id, client.rest, user_info.lang)
