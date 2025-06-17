@@ -304,7 +304,12 @@ verify = lightbulb.Group("verify", "commands related to verification")
 
 
 @verify.register
-class User(lightbulb.SlashCommand, name="user", description="verify a specific user"):
+class User(
+    lightbulb.SlashCommand,
+    name="user",
+    description="verify a specific user",
+    hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.MANAGE_ROLES)],
+):
     user = lightbulb.user("user", "the user to verify")
 
     @lightbulb.invoke
@@ -326,6 +331,7 @@ class Message(
     lightbulb.SlashCommand,
     name="message",
     description="send the verification view to the current chat",
+    hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.ADMINISTRATOR)],
 ):
     lang = lightbulb.string(
         "language",

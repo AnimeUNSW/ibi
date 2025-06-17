@@ -22,6 +22,15 @@ client.di.registry_for(lightbulb.di.Contexts.DEFAULT).register_value(
 )
 
 
+@client.error_handler
+async def handler(exc: lightbulb.exceptions.ExecutionPipelineFailedException) -> bool:
+    if isinstance(exc.__cause__, lightbulb.prefab.checks.MissingRequiredPermission):
+        await exc.context.respond("You lack the permissions to do that.", ephemeral=True)
+        return True
+    else:
+        return False
+
+
 @bot.listen(hikari.StartingEvent)
 async def on_starting(_: hikari.StartingEvent) -> None:
     pool = AsyncConnectionPool(os.getenv("DATABASE_URL"))
