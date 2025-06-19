@@ -135,8 +135,8 @@ translations: dict[SupportedLanguage, D[str]] = {
         },
         "message": {
             "initial": "Welcome to AUNSW! If you can see this then you're unverified, but don't worry; it's a simple process to get you verified.",
-            "steps1": '1. Depending on whether you\'re a UNSW student or not, fill out the corresponding form by pressing on one of buttons below.\n2. If you filling out the UNSW form, you will receive a message in your student email, else if you filled out the Non-UNSW form, it will be sent to the email you provided.\n3. Click on the button in the email labeled "Verify," as shown below.',
-            "steps2": "4. Profit!",
+            "steps1": '1. Accept the rules by clicking the "Complete" button at the bottom of the screen and following the instructions.\n2. Depending on whether you\'re a UNSW student or not, fill out the corresponding form by pressing on one of buttons below.\n3. If you filling out the UNSW form, you will receive a message in your student email, else if you filled out the Non-UNSW form, it will be sent to the email you provided.\n4. Click on the button in the email labeled "Verify," as shown below.',
+            "steps2": "5. Profit!",
             "buttons": {
                 "unsw": "Verify (UNSW)",
                 "non-unsw": "Verify (Non-UNSW)",
@@ -178,8 +178,8 @@ translations: dict[SupportedLanguage, D[str]] = {
         },
         "message": {
             "initial": "欢迎来到UNSW！如果您看到此消息，则表示您尚未通过验证，但请别担心；验证过程很简单。",
-            "steps1": "1. 根据您是否是UNSW学生，通过点击以下按钮之一填写相应的表格。\n2. 如果您填写的是UNSW表格，您将在您的学生邮箱中收到一条消息；如果您填写的是非UNSW表格，则会发送到您提供的电子邮件地址。\n3. 点击电子邮件中标有“验证”的按钮，如下图所示。",
-            "steps2": "4. 搞定！",
+            "steps1": "1. 点击屏幕下方的 “完成 ”按钮，按照说明接受规则。\n2. 根据您是否是UNSW学生，通过点击以下按钮之一填写相应的表格。\n3. 如果您填写的是UNSW表格，您将在您的学生邮箱中收到一条消息；如果您填写的是非UNSW表格，则会发送到您提供的电子邮件地址。\n4. 点击电子邮件中标有“验证”的按钮，如下图所示。",
+            "steps2": "5. 搞定！",
             "buttons": {
                 "unsw": "验证 (UNSW)",
                 "non-unsw": "验证 (非UNSW)",
