@@ -128,7 +128,7 @@ translations: dict[SupportedLanguage, D[str]] = {
         "confirmed": "Thanks for verifying, {user_info.first_name}! "
         "Please check your email, {user_info.email}, for the next step.",
         "welcome_message": "Welcome {user}! "
-        "Feel free to leave an introduction in {introduction_channel}",
+        "Feel free to leave an introduction in {introduction_channel}.",
         "endpoint": {
             "success": "Successfully verified!",
             "fail": "Verification was not successful, please contact {owner} on Discord for support.",
@@ -171,7 +171,7 @@ translations: dict[SupportedLanguage, D[str]] = {
         },
         "confirmed": "感谢您的验证，{user_info.first_name}！"
         "请检查您的电子邮件，{user_info.email}，以获取下一步指示。",
-        "welcome_message": "欢迎 {user}！欢迎在 {introduction_channel} 留下自我介绍",
+        "welcome_message": "欢迎 {user}！欢迎在 {introduction_channel} 留下自我介绍。",
         "endpoint": {
             "success": "验证成功！",
             "fail": "验证未成功，请在Discord上联系{owner}寻求帮助。",
