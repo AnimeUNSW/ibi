@@ -9,8 +9,8 @@ import hikari
 import jwt
 import lightbulb
 import miru
-from mailersend import emails
 import phonenumbers
+from mailersend import emails
 from psycopg_pool import AsyncConnectionPool
 
 from bot import OwnerMention
@@ -228,9 +228,7 @@ public_ip = urlopen("https://ident.me").read().decode("utf8")
 
 async def send_verification_email(user_info: UserInfo):
     url = f"http://{public_ip}:8000"
-    link = (
-        f"{url}/verify/{jwt.encode(user_info.to_dict(), os.getenv('JWT_TOKEN'), algorithm='HS256')}"
-    )
+    link = f"{url}/verify/{jwt.encode(user_info.to_dict(), os.getenv('JWT_TOKEN'), algorithm='HS256')}"
     mailer = emails.NewEmail(os.getenv("MAILERSEND_API_KEY"))
     mail_body = {
         "from": {"name": "AnimeUNSW", "email": "socials@animeunsw.net"},
@@ -255,9 +253,7 @@ welcome_channel_id = int(os.getenv("WELCOME_CHANNEL"))
 introduction_channel_id = int(os.getenv("INTRODUCTION_CHANNEL"))
 
 
-async def verify_user(
-    user_id: hikari.Snowflakeish, rest: hikari.api.RESTClient, lang: SupportedLanguage = "en"
-):
+async def verify_user(user_id: hikari.Snowflakeish, rest: hikari.api.RESTClient, lang: SupportedLanguage = "en"):
     member = await rest.fetch_member(guild_id, user_id)
     for role_id in role_ids:
         await member.add_role(role_id, reason="verification")
@@ -313,13 +309,11 @@ class User(
     user = lightbulb.user("user", "the user to verify")
 
     @lightbulb.invoke
-    async def invoke(
-        self, ctx: lightbulb.Context, client: lightbulb.Client, owner_mention: OwnerMention
-    ) -> None:
+    async def invoke(self, ctx: lightbulb.Context, client: lightbulb.Client, owner_mention: OwnerMention) -> None:
         await ctx.defer(ephemeral=True)
         try:
             await verify_user(self.user.id, client.rest)
-        except:
+        except Exception:
             await ctx.respond(
                 f"There was an error in verifying {self.user.mention}. Please contact {owner_mention} for support!"
             )
@@ -341,9 +335,7 @@ class Message(
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, client: lightbulb.Client) -> None:
-        await client.rest.create_message(
-            ctx.channel_id, components=verification_message_components(self.lang)
-        )
+        await client.rest.create_message(ctx.channel_id, components=verification_message_components(self.lang))
         await ctx.respond(
             "The verification message has been sent in the current channel!",
             flags=hikari.MessageFlag.EPHEMERAL,
@@ -352,9 +344,7 @@ class Message(
 
 # We do this manually as neither lightbulb nor miru support Components V2 just yet
 @loader.listener(hikari.ComponentInteractionCreateEvent)
-async def verify_button_listener(
-    event: hikari.ComponentInteractionCreateEvent, miru_client: miru.Client
-):
+async def verify_button_listener(event: hikari.ComponentInteractionCreateEvent, miru_client: miru.Client):
     match event.interaction.custom_id:
         case "verify:button:en:unsw":
             modal = VerifyModal("en", True)
@@ -449,9 +439,7 @@ class VerifyModal(miru.Modal):
     async def callback(self, ctx: miru.ModalContext) -> None:
         await ctx.defer(flags=hikari.MessageFlag.EPHEMERAL)
         if self.is_unsw:
-            user_info = UserInfo(
-                self.lang, self.first_name.value, self.last_name.value, zid=self.zid.value
-            )
+            user_info = UserInfo(self.lang, self.first_name.value, self.last_name.value, zid=self.zid.value)
         else:
             user_info = UserInfo(
                 self.lang,
