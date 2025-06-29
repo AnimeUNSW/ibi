@@ -1,10 +1,8 @@
-from typing import Self
-
 import hikari
 from attrs import field, frozen
 from attrs.validators import instance_of, max_len
 from psycopg import AsyncConnection
-from psycopg.rows import TupleRow
+from psycopg.rows import DictRow, dict_row
 from psycopg_pool import AsyncConnectionPool
 
 
@@ -14,38 +12,56 @@ class Profile:
     exp: int
     background_image: str
     quote: str = field(validator=[instance_of(str), max_len(100)])
-    mal_profile: str | None = None
-    anilist_profile: str | None = None
+    mal_profile: str | None
+    anilist_profile: str | None
+    rank: int
+
+    @property
+    def level(self) -> int:
+        # Temporary
+        return 1 + self.exp // 100
 
     @classmethod
-    def from_row(cls, row: TupleRow):
-        return cls(*row)
+    def from_row(cls, row: DictRow):
+        return cls(
+            user_id=row["user_id"],
+            exp=row["exp"],
+            background_image=row["background_image"],
+            quote=row["quote"],
+            mal_profile=row["mal_profile"],
+            anilist_profile=row["anilist_profile"],
+            rank=row["rank"],
+        )
 
-    async def add_exp(self, pool: AsyncConnectionPool, amount: int) -> Self:
+    async def add_exp(self, pool: AsyncConnectionPool, amount: int) -> None:
         """Add exp to the profile
 
         Args:
             pool: DB pool
             exp: Amount to add
-
-        Returns:
-            Updated profile object
         """
         async with pool.connection() as conn:
-            async with conn.cursor() as cur:
+            async with conn.cursor(row_factory=dict_row) as cur:
                 await cur.execute(
                     """
                     UPDATE profiles
                     SET exp = exp + %s
                     WHERE user_id = %s
-                    RETURNING *;
                     """,
                     (amount, self.user_id),
                 )
-                row = await cur.fetchone()
-                if row is None:
-                    raise ValueError("User not found in table")
-                return self.from_row(row)
+
+    async def set_quote(self, pool: AsyncConnectionPool, new_quote: str) -> None:
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    UPDATE profiles
+                    SET quote = %s
+                    WHERE user_id = %s
+                    """,
+                    (new_quote, self.user_id),
+                )
 
 
 async def get_profile(pool: AsyncConnectionPool, user: hikari.User) -> Profile:
@@ -74,7 +90,7 @@ async def get_profile(pool: AsyncConnectionPool, user: hikari.User) -> Profile:
         return Profile.from_row(row)
 
 
-async def fetch_profile_from_id(conn: AsyncConnection, user_id: int) -> TupleRow | None:
+async def fetch_profile_from_id(conn: AsyncConnection, user_id: int) -> DictRow | None:
     """Given the user id, get the row in the profiles table
 
     Args:
@@ -84,8 +100,18 @@ async def fetch_profile_from_id(conn: AsyncConnection, user_id: int) -> TupleRow
     Returns:
         The row or None
     """
-    async with conn.cursor() as cur:
-        await cur.execute("SELECT * FROM profiles WHERE user_id = %s", (user_id,))
+    async with conn.cursor(row_factory=dict_row) as cur:
+        await cur.execute(
+            """
+            SELECT *
+            FROM (
+                SELECT *, RANK() OVER (ORDER BY exp DESC) AS rank
+                FROM profiles
+            ) ranked_profiles
+            WHERE user_id = %s
+            """,
+            (user_id,),
+        )
         return await cur.fetchone()
 
 
