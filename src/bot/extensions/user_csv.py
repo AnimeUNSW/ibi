@@ -14,6 +14,7 @@ class UserCsvs(
     lightbulb.SlashCommand,
     name="user_csvs",
     description="get user csvs",
+    hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.ADMINISTRATOR)],
 ):
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
