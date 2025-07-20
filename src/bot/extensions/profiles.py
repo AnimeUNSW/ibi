@@ -71,6 +71,11 @@ translations = {
     },
 }
 
+prefixes = {
+    "anilist_profile": "https://anilist.co/user/",
+    "mal_profile": "https://myanimelist.net/profile/"
+}
+
 
 @profile.register
 class View(
@@ -126,8 +131,8 @@ class Set(
 ):
     quote = lightbulb.string("quote", "new quote to set", default=None)
 
-    mal_profile = lightbulb.string("mal", "your MyAnimeList profile", default=None)
-    anilist_profile = lightbulb.string("anilist", "your AniList profile", default=None)
+    mal_profile = lightbulb.string("mal", "Enter your username for your MAL profile", default=None)
+    anilist_profile = lightbulb.string("anilist", "Enter your username for your AniList profile", default=None)
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
@@ -147,10 +152,12 @@ class Set(
 
         if self.mal_profile is not None:
             if profile.mal_profile != self.mal_profile:
+                self.mal_profile = prefixes["mal_profile"] + self.mal_profile
                 await profile.set_mal_profile(pool, self.mal_profile)
 
         if self.anilist_profile is not None:
             if profile.anilist_profile != self.anilist_profile:
+                self.anilist_profile = prefixes["anilist_profile"] + self.anilist_profile
                 await profile.set_anilist_profile(pool, self.anilist_profile)
 
         await ctx.respond("Updated profile")
