@@ -17,7 +17,9 @@ cooldown = timedelta(seconds=5)
 
 
 @loader.listener(hikari.GuildMessageCreateEvent)
-async def on_message(event: hikari.GuildMessageCreateEvent, pool: AsyncConnectionPool) -> None:
+async def on_message(
+    event: hikari.GuildMessageCreateEvent, pool: AsyncConnectionPool
+) -> None:
     if event.message.channel_id != int(os.getenv("TESTING_CHANNEL") or 0):
         return
 
@@ -29,7 +31,9 @@ async def on_message(event: hikari.GuildMessageCreateEvent, pool: AsyncConnectio
     time_since_last_xp = current_time - cooldowns[user]
     if time_since_last_xp < cooldown:
         time_until_next_xp = cooldown - time_since_last_xp
-        await event.message.respond(f"already been fed pls wait {time_until_next_xp.total_seconds():.0f} more seconds")
+        await event.message.respond(
+            f"already been fed pls wait {time_until_next_xp.total_seconds():.0f} more seconds"
+        )
         return
     cooldowns[user] = current_time
 
@@ -50,8 +54,9 @@ translations = {
             "level": "level",
             "rank": "rank",
             "mal_profile": "mal profile",
-            "hyperlink": "click me!"
-    },
+            "anilist_profile": "anilist profile",
+            "hyperlink": "click me!",
+        },
     },
     "cn": {
         "fields": {
@@ -60,11 +65,12 @@ translations = {
             "exp": "XP",
             "level": "等级",
             "rank": "秩",
-            "mal_profile": "MAL轮廓",
-            "hyperlink": "点我！"
+            "mal_profile": "AniList轮廓",
+            "hyperlink": "点我！",
         },
     },
 }
+
 
 @profile.register
 class View(
@@ -76,7 +82,7 @@ class View(
         "language",
         "the language of the view to be sent",
         choices=[lightbulb.Choice("English", "en"), lightbulb.Choice("Chinese", "cn")],
-        default="en"
+        default="en",
     )
 
     user = lightbulb.user("user", "the user, defaults to yourself", default=None)
@@ -86,16 +92,28 @@ class View(
         await ctx.defer()
         user = self.user or ctx.user
         profile = await get_profile(pool, user)
-        fields=translations[self.lang]["fields"]
+        fields = translations[self.lang]["fields"]
 
-        embed= hikari.Embed(
-            title=f"{user.display_name}{fields["title"]}"
-        ).set_thumbnail(user.display_avatar_url
-        ).add_field(name=str(fields["quote"]), value=str(profile.quote)
-        ).add_field(name=str(fields["exp"]), value=str(profile.exp)
-        ).add_field(name=str(fields["level"]), value=str(profile.level)
-        ).add_field(name=str(fields["rank"]), value=str(profile.rank)
-        ).add_field(name=str(fields["mal_profile"]), value=f"[{fields["hyperlink"]}]({profile.mal_profile})")
+        embed = (
+            hikari.Embed(title=f"{user.display_name}{fields["title"]}")
+            .set_thumbnail(user.display_avatar_url)
+            .add_field(name=str(fields["quote"]), value=str(profile.quote))
+            .add_field(name=str(fields["exp"]), value=str(profile.exp))
+            .add_field(name=str(fields["level"]), value=str(profile.level))
+            .add_field(name=str(fields["rank"]), value=str(profile.rank))
+        )
+
+        if profile.mal_profile is not None:
+            embed.add_field(
+                name=str(fields["mal_profile"]),
+                value=f"[{fields["hyperlink"]}]({profile.mal_profile})",
+            )
+
+        if profile.anilist_profile is not None:
+            embed.add_field(
+                name=str(fields["anilist_profile"]),
+                value=f"[{fields["hyperlink"]}]({profile.anilist_profile})",
+            )
 
         await ctx.respond(embed=embed)
 
@@ -108,9 +126,8 @@ class Set(
 ):
     quote = lightbulb.string("quote", "new quote to set", default=None)
 
-    mal_profile = lightbulb.string(
-        "mal", "your MyAnimeList username", default=None
-    )
+    mal_profile = lightbulb.string("mal", "your MyAnimeList profile", default=None)
+    anilist_profile = lightbulb.string("anilist", "your AniList profile", default=None)
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
@@ -119,16 +136,48 @@ class Set(
         profile = await get_profile(pool, user)
         if self.quote is not None:
             if len(self.quote) > 100:
-                await ctx.respond(f"Max quote length is 100 characters, provided quote is {len(self.quote)} characters")
+                await ctx.respond(
+                    f"Max quote length is 100 characters, provided quote is {len(self.quote)} characters"
+                )
                 return
             elif profile.quote == self.quote:
                 await ctx.respond("Quote same as previous quote")
                 return
             await profile.set_quote(pool, self.quote)
-        
+
         if self.mal_profile is not None:
             if profile.mal_profile != self.mal_profile:
                 await profile.set_mal_profile(pool, self.mal_profile)
+
+        if self.anilist_profile is not None:
+            if profile.anilist_profile != self.anilist_profile:
+                await profile.set_anilist_profile(pool, self.anilist_profile)
+
+        await ctx.respond("Updated profile")
+
+
+@profile.register
+
+class Remove(
+    lightbulb.SlashCommand,
+    name="remove",
+    description="remove user profile details"
+):
+    profile_field = lightbulb.string(
+        "field",
+        "field of profile you want to delete",
+        choices=[lightbulb.Choice("MAL", "mal_profile"), lightbulb.Choice("AniList", "anilist_profile")],
+    )
+
+    @lightbulb.invoke
+    async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
+        await ctx.defer()
+        user = ctx.user
+        profile = await get_profile(pool, user)
+
+        if self.profile_field is not None:
+            await profile.remove_attribute(pool, self.profile_field)
+
         await ctx.respond("Updated profile")
 
 

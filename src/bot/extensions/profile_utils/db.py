@@ -75,6 +75,31 @@ class Profile:
                     (mal_profile, self.user_id),
                 )
 
+    async def set_anilist_profile(self, pool: AsyncConnectionPool, anilist_profile: str) -> None:
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    UPDATE profiles
+                    SET anilist_profile = %s
+                    WHERE user_id = %s
+                    """,
+                    (anilist_profile, self.user_id)
+                )
+
+    async def remove_attribute(self, pool: AsyncConnectionPool, attribute: str) -> None:
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    f"""
+                    UPDATE profiles
+                    SET {attribute} = NULL
+                    WHERE user_id = %s
+                    """,
+                    (self.user_id,)
+                )
+    
+
 async def get_profile(pool: AsyncConnectionPool, user: hikari.User) -> Profile:
     """Gets the profile of a user from the db, creates a default one of it doesn't exist
 
