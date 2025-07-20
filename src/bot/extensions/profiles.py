@@ -55,13 +55,17 @@ class View(
         await ctx.defer()
         user = self.user or ctx.user
         profile = await get_profile(pool, user)
-        await ctx.respond(
-            f"Name: {user.display_name}\n"
-            f"Quote: {profile.quote}\n"
-            f"Exp: {profile.exp}\n"
-            f"Level: {profile.level}\n"
-            f"Rank: {profile.rank}\n"
-        )
+
+        embed= hikari.Embed(
+            title=f"{user.display_name}'s profile"
+        ).set_thumbnail(user.display_avatar_url
+        ).add_field(name="**quote**", value=str(profile.quote)
+        ).add_field(name="**exp**", value=str(profile.exp)
+        ).add_field(name="**level**", value=str(profile.level)
+        ).add_field(name="**rank**", value=str(profile.rank)
+        ).add_field(name="Mal/AniList profile", value=f"[Click me!]({profile.mal_profile})")
+
+        await ctx.respond(embed=embed)
 
 
 @profile.register
@@ -71,6 +75,10 @@ class Set(
     description="set user profile details",
 ):
     quote = lightbulb.string("quote", "new quote to set", default=None)
+
+    mal_profile = lightbulb.string(
+        "mal", "your MyAnimeList username", default=None
+    )
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
@@ -85,7 +93,11 @@ class Set(
                 await ctx.respond("Quote same as previous quote")
                 return
             await profile.set_quote(pool, self.quote)
-        await ctx.respond("Updated quote")
+        
+        if self.mal_profile is not None:
+            if profile.mal_profile != self.mal_profile:
+                await profile.set_mal_profile(pool, self.mal_profile)
+        await ctx.respond("Updated profile")
 
 
 loader.command(profile)

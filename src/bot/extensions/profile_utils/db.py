@@ -63,6 +63,17 @@ class Profile:
                     (new_quote, self.user_id),
                 )
 
+    async def set_mal_profile(self, pool: AsyncConnectionPool, mal_profile: str) -> None:
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    UPDATE profiles
+                    SET mal_profile = %s
+                    WHERE user_id = %s
+                    """,
+                    (mal_profile, self.user_id),
+                )
 
 async def get_profile(pool: AsyncConnectionPool, user: hikari.User) -> Profile:
     """Gets the profile of a user from the db, creates a default one of it doesn't exist
