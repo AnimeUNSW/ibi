@@ -41,6 +41,30 @@ async def on_message(event: hikari.GuildMessageCreateEvent, pool: AsyncConnectio
 
 profile = lightbulb.Group("profile", "commands related to user profiles")
 
+translations = {
+    "en": {
+        "fields": {
+            "title": "'s profile",
+            "quote": "quote",
+            "exp": "exp",
+            "level": "level",
+            "rank": "rank",
+            "mal_profile": "mal profile",
+            "hyperlink": "click me!"
+    },
+    },
+    "cn": {
+        "fields": {
+            "title": "的轮廓",
+            "quote": "引用",
+            "exp": "XP",
+            "level": "等级",
+            "rank": "秩",
+            "mal_profile": "MAL轮廓",
+            "hyperlink": "点我！"
+        },
+    },
+}
 
 @profile.register
 class View(
@@ -48,6 +72,13 @@ class View(
     name="view",
     description="view user profile details",
 ):
+    lang = lightbulb.string(
+        "language",
+        "the language of the view to be sent",
+        choices=[lightbulb.Choice("English", "en"), lightbulb.Choice("Chinese", "cn")],
+        default="en"
+    )
+
     user = lightbulb.user("user", "the user, defaults to yourself", default=None)
 
     @lightbulb.invoke
@@ -55,15 +86,16 @@ class View(
         await ctx.defer()
         user = self.user or ctx.user
         profile = await get_profile(pool, user)
+        fields=translations[self.lang]["fields"]
 
         embed= hikari.Embed(
-            title=f"{user.display_name}'s profile"
+            title=f"{user.display_name}{fields["title"]}"
         ).set_thumbnail(user.display_avatar_url
-        ).add_field(name="**quote**", value=str(profile.quote)
-        ).add_field(name="**exp**", value=str(profile.exp)
-        ).add_field(name="**level**", value=str(profile.level)
-        ).add_field(name="**rank**", value=str(profile.rank)
-        ).add_field(name="Mal/AniList profile", value=f"[Click me!]({profile.mal_profile})")
+        ).add_field(name=str(fields["quote"]), value=str(profile.quote)
+        ).add_field(name=str(fields["exp"]), value=str(profile.exp)
+        ).add_field(name=str(fields["level"]), value=str(profile.level)
+        ).add_field(name=str(fields["rank"]), value=str(profile.rank)
+        ).add_field(name=str(fields["mal_profile"]), value=f"[{fields["hyperlink"]}]({profile.mal_profile})")
 
         await ctx.respond(embed=embed)
 
