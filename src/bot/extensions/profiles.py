@@ -1,28 +1,17 @@
 import os
-from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import hikari
 import lightbulb
 from psycopg_pool import AsyncConnectionPool
 
-from .profile_utils.db import get_profile
+from .profile_utils.db import cooldown, cooldowns, get_exp, get_profile
 
 loader = lightbulb.Loader()
 
 
-cooldowns: defaultdict[hikari.User, datetime] = defaultdict(lambda: datetime.min)
-# Cooldown for xp
-cooldown = timedelta(seconds=5)
-
-
 @loader.listener(hikari.GuildMessageCreateEvent)
-async def on_message(
-    event: hikari.GuildMessageCreateEvent, pool: AsyncConnectionPool
-) -> None:
-    if event.message.channel_id != int(os.getenv("TESTING_CHANNEL") or 0):
-        return
-
+async def on_message(event: hikari.GuildMessageCreateEvent, pool: AsyncConnectionPool) -> None:
     user = event.author
     if user.is_bot:
         return
@@ -30,17 +19,17 @@ async def on_message(
     current_time = datetime.now()
     time_since_last_xp = current_time - cooldowns[user]
     if time_since_last_xp < cooldown:
-        time_until_next_xp = cooldown - time_since_last_xp
-        await event.message.respond(
-            f"already been fed pls wait {time_until_next_xp.total_seconds():.0f} more seconds"
-        )
         return
     cooldowns[user] = current_time
 
     profile = await get_profile(pool, user)
-    await profile.add_exp(pool, 25)
+    await profile.add_exp(pool, get_exp())
     new_profile = await get_profile(pool, user)
-    await event.message.respond(f"{profile.exp} -> {new_profile.exp}")
+    if profile.level != new_profile:
+        channel_id = int(os.getenv("TESTING_CHANNEL") or 0)
+        await event.app.rest.create_message(
+            channel_id, f"🎉 {user.mention} leveled up to **Level {new_profile.level}**!"
+        )
 
 
 profile = lightbulb.Group("profile", "commands related to user profiles")
@@ -72,10 +61,7 @@ translations = {
     },
 }
 
-prefixes = {
-    "anilist_profile": "https://anilist.co/user/",
-    "mal_profile": "https://myanimelist.net/profile/"
-}
+prefixes = {"anilist_profile": "https://anilist.co/user/", "mal_profile": "https://myanimelist.net/profile/"}
 
 
 @profile.register
@@ -100,25 +86,26 @@ class View(
         profile = await get_profile(pool, user)
         fields = translations[self.lang]["fields"]
 
+        level, xp_remainder, xp_total = profile.get_level_info()
         embed = (
-            hikari.Embed(title=f"{user.display_name}{fields["title"]}")
+            hikari.Embed(title=f"{user.display_name}{fields['title']}")
             .set_thumbnail(user.display_avatar_url)
             .add_field(name=str(fields["quote"]), value=str(profile.quote))
             .add_field(name=str(fields["exp"]), value=str(profile.exp))
-            .add_field(name=str(fields["level"]), value=str(profile.level))
+            .add_field(name=str(fields["level"]), value=f"{level} - {xp_remainder}/{xp_total} until next")
             .add_field(name=str(fields["rank"]), value=str(profile.rank))
         )
 
         if profile.mal_profile is not None:
             embed.add_field(
                 name=str(fields["mal_profile"]),
-                value=f"[{fields["hyperlink"]}]({profile.mal_profile})",
+                value=f"[{fields['hyperlink']}]({profile.mal_profile})",
             )
 
         if profile.anilist_profile is not None:
             embed.add_field(
                 name=str(fields["anilist_profile"]),
-                value=f"[{fields["hyperlink"]}]({profile.anilist_profile})",
+                value=f"[{fields['hyperlink']}]({profile.anilist_profile})",
             )
 
         await ctx.respond(embed=embed)
@@ -142,9 +129,7 @@ class Set(
         profile = await get_profile(pool, user)
         if self.quote is not None:
             if len(self.quote) > 100:
-                await ctx.respond(
-                    f"Max quote length is 100 characters, provided quote is {len(self.quote)} characters"
-                )
+                await ctx.respond(f"Max quote length is 100 characters, provided quote is {len(self.quote)} characters")
                 return
             elif profile.quote == self.quote:
                 await ctx.respond("Quote same as previous quote")
@@ -165,11 +150,7 @@ class Set(
 
 
 @profile.register
-class Remove(
-    lightbulb.SlashCommand,
-    name="remove",
-    description="remove user profile details"
-):
+class Remove(lightbulb.SlashCommand, name="remove", description="remove user profile details"):
     profile_field = lightbulb.string(
         "field",
         "field of profile you want to delete",

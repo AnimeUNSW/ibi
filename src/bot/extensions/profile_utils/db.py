@@ -1,9 +1,34 @@
+import random
+from collections import defaultdict
+from datetime import datetime, timedelta
+
 import hikari
 from attrs import field, frozen
 from attrs.validators import instance_of, max_len
-from psycopg import AsyncConnection
+from psycopg import AsyncConnection, sql
 from psycopg.rows import DictRow, dict_row
 from psycopg_pool import AsyncConnectionPool
+
+LEVEL_ONE_XP_REQ = 100
+PER_LEVEL_XP_INC = 50
+
+cooldowns: defaultdict[hikari.User, datetime] = defaultdict(lambda: datetime.min)
+# Cooldown for xp
+cooldown = timedelta(minutes=1)
+
+
+def exp_for_level(level: int) -> int:
+    """
+    Formula for xp is (non-cumulative)
+    0 -> 1: LEVEL_ONE_XP_REQ
+    1 -> 2: LEVEL_ONE_XP_REQ + PER_LEVEL_XP_INC
+    2 -> 3: LEVEL_ONE_XP_REQ + 2 * PER_LEVEL_XP_INC
+    """
+    return LEVEL_ONE_XP_REQ * level + PER_LEVEL_XP_INC * level * (level - 1) // 2
+
+
+def get_exp() -> int:
+    return random.randint(15, 25)
 
 
 @frozen
@@ -16,10 +41,30 @@ class Profile:
     anilist_profile: str | None
     rank: int
 
+    def get_level_info(self) -> tuple[int, int, int]:
+        """
+        Calculates level info from xp
+
+        Returns:
+            (current level, remaining xp until next level, xp required for next level)
+        """
+        lower, upper = 0, 1
+        while self.exp >= exp_for_level(upper):
+            upper *= 2
+        while lower < upper:
+            m = (lower + upper) // 2
+            if exp_for_level(m) < self.exp:
+                lower = m + 1
+            else:
+                upper = m
+        curr_level = lower - 1
+        remaining_xp_til_next_level = self.exp - exp_for_level(curr_level)
+        xp_required_for_next_level = LEVEL_ONE_XP_REQ + curr_level * PER_LEVEL_XP_INC
+        return curr_level, remaining_xp_til_next_level, xp_required_for_next_level
+
     @property
     def level(self) -> int:
-        # Temporary
-        return 1 + self.exp // 100
+        return self.get_level_info()[0]
 
     @classmethod
     def from_row(cls, row: DictRow):
@@ -84,21 +129,22 @@ class Profile:
                     SET anilist_profile = %s
                     WHERE user_id = %s
                     """,
-                    (anilist_profile, self.user_id)
+                    (anilist_profile, self.user_id),
                 )
 
     async def remove_attribute(self, pool: AsyncConnectionPool, attribute: str) -> None:
         async with pool.connection() as conn:
             async with conn.cursor(row_factory=dict_row) as cur:
-                await cur.execute(
-                    f"""
+                query = sql.SQL("""
                     UPDATE profiles
-                    SET {attribute} = NULL
+                    SET {column} = NULL
                     WHERE user_id = %s
-                    """,
-                    (self.user_id,)
+                """).format(column=sql.Identifier(attribute))
+                await cur.execute(
+                    query,
+                    (self.user_id,),
                 )
-    
+
 
 async def get_profile(pool: AsyncConnectionPool, user: hikari.User) -> Profile:
     """Gets the profile of a user from the db, creates a default one of it doesn't exist
