@@ -65,7 +65,8 @@ translations = {
             "exp": "XP",
             "level": "等级",
             "rank": "秩",
-            "mal_profile": "AniList轮廓",
+            "mal_profile": "MAL轮廓",
+            "anilist_profile": "AniList轮廓",
             "hyperlink": "点我！",
         },
     },
@@ -164,7 +165,6 @@ class Set(
 
 
 @profile.register
-
 class Remove(
     lightbulb.SlashCommand,
     name="remove",
