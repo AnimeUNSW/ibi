@@ -8,19 +8,22 @@ import hikari
 import lightbulb
 from psycopg_pool import AsyncConnectionPool
 
-from .event_utils.date_convert import convert_string_to_date, get_unix_timestamp
+from .event_code_utils.date_convert import convert_string_to_date, get_unix_timestamp
+
+# constants
+EXPIRY_SECONDS = 7200 # 2 hours
+
 
 loader = lightbulb.Loader()
-
-events = lightbulb.Group("event", "commands related to events")
+code = lightbulb.Group("code", "commands related to code")
 
 def generate_code() -> str:
-    length = 8
-    random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+    length = 4
+    random_string = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
     return random_string
 
 
-@events.register
+@code.register
 class Create(
     lightbulb.SlashCommand,
     name="create",
@@ -44,13 +47,32 @@ class Create(
         event_end_date = convert_string_to_date(self.end_date, self.end_hour)
         unix_timestamp = get_unix_timestamp(event_end_date)
 
-        await ctx.respond(f"Code generated: {code} Event ends at {self.end_date} at {self.end_hour}:00 Unix timestamp is: {unix_timestamp}")
+        expiry_timestamp = unix_timestamp + EXPIRY_SECONDS
+
+        async with pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """
+                    INSERT INTO events (event_code, expiry_date)
+                    VALUES (%s, %s)
+                    """,
+                    (code, expiry_timestamp),
+                )
+
+        ret_string = (
+                    f"Code generated: {code} Event ends at {self.end_date} at "
+                    f"{self.end_hour}:00 Unix timestamp is: "
+                    f"{unix_timestamp} and the code will expire in {EXPIRY_SECONDS / 3600} hours, "
+                    f"timestamp: {expiry_timestamp}"
+            )
+
+        await ctx.respond(ret_string)
 
 
-@events.register
-class Submit(
+@code.register
+class Redeem(
     lightbulb.SlashCommand,
-    name="submit",
+    name="redeem",
     description="enter an event code to get extra EXP!"
 ):
     code=lightbulb.string(
@@ -63,7 +85,7 @@ class Submit(
         await ctx.defer()
         user = ctx.member
         username = user.nickname or user.username
-        await ctx.respond(f"Thank you {username} for coming to our events! We hope to see you soon!")
+        await ctx.respond(f"Thank you {username} for coming to our code! We hope to see you soon!")
 
 
-loader.command(events)
+loader.command(code)
