@@ -3,6 +3,8 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 import random
 import string
+from psycopg.errors import UniqueViolation
+
 
 import hikari
 import lightbulb
@@ -69,6 +71,69 @@ class Create(
         await ctx.respond(ret_string)
 
 
+async def code_exists(pool, event_code):
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT 1
+                from events
+                where event_code = %s
+                """,
+                (event_code, )
+            )
+
+            res = await cur.fetchone()
+
+            return bool(res)
+        
+async def code_not_expired(pool, code, date):
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT 1
+                from events
+                where event_code = %s and expiry_date > %s
+                """,
+                (code, date)
+            )
+
+            res = await cur.fetchone()
+
+            return bool(res)
+        
+
+async def code_not_expired(pool, code, date):
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                SELECT 1
+                from events
+                where event_code = %s and expiry_date > %s
+                """,
+                (code, date)
+            )
+
+            res = await cur.fetchone()
+
+            return bool(res)
+        
+async def try_redeem_code(pool, user_id, code):
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                """
+                insert into event_participants (event_code, user_id)
+                values (%s, %s)
+                """,
+                (code, user_id)
+            )
+
+
+
+
 @code.register
 class Redeem(
     lightbulb.SlashCommand,
@@ -83,6 +148,19 @@ class Redeem(
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
         await ctx.defer()
+
+        command_sent_time = get_unix_timestamp(datetime.now())
+        # check that the code exists
+
+        if not await code_exists(pool, self.code):
+            await ctx.respond(f"Invalid code: {self.code}")
+            return
+        # check that the code has not expired
+        if not await code_not_expired(pool, self.code, command_sent_time):
+            await ctx.respond(f"code: {self.code} expired")
+            return
+        # check that the player has not already submited the code
+
         user = ctx.member
         username = user.nickname or user.username
         await ctx.respond(f"Thank you {username} for coming to our code! We hope to see you soon!")

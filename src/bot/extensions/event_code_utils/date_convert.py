@@ -21,4 +21,4 @@ if __name__ == "__main__":
     print(timestamp)
     unix_timestamp = get_unix_timestamp(timestamp)
 
-    print(type(unix_timestamp))
+    print(get_unix_timestamp(datetime.now()))
