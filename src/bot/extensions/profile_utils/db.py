@@ -209,6 +209,6 @@ async def insert_default_profile(conn: AsyncConnection, user_id: int) -> None:
         INSERT INTO profiles (user_id, exp, background_image, quote, mal_profile, anilist_profile)
         VALUES (%s, %s, %s, %s, %s, %s)
         """,
-        (user_id, 0, "uwu.png", "Right here! Right now! Emerge!", None, None),
+        (user_id, 0, "", "Hello!", None, None),
     )
     await conn.commit()
