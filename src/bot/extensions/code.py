@@ -131,20 +131,20 @@ class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event 
             await ctx.respond("Invalid user")
             return
         command_sent_time = get_unix_timestamp(datetime.now())
-        # check that the code exists
 
+        # check that the code exists
         if not await code_exists(pool, self.code):
             await ctx.respond(f"Invalid code: {self.code}")
             return
+
         # check that the code has not expired
         if not await code_not_expired(pool, self.code, command_sent_time):
             await ctx.respond(f"code: {self.code} expired")
             return
-        # check that the player has not already submited the code
 
+        # check that the player has not already submited the code
         if await try_redeem_code(pool, user_id=user.id, code=self.code):
-            username = user.nickname or user.username
-            await ctx.respond(f"Thank you {username} for coming to our code! We hope to see you soon!")
+            await ctx.respond(f"Thank you {user.mention} for coming to our event! We hope to see you soon!")
         else:
             await ctx.respond("You have already redeemed the code!")
 
