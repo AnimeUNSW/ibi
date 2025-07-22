@@ -1,6 +1,7 @@
-from zoneinfo import ZoneInfo
-from datetime import datetime, timedelta
 import re
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 
 def convert_string_to_date(date_string: str, hour: str) -> datetime:
     # splits the string
@@ -8,8 +9,10 @@ def convert_string_to_date(date_string: str, hour: str) -> datetime:
     native_date = datetime(int(year), int(month), int(day), int(hour), 0, 0, tzinfo=ZoneInfo("Australia/Sydney"))
     return native_date
 
+
 def get_unix_timestamp(date: datetime) -> int:
     return round(date.timestamp())
+
 
 if __name__ == "__main__":
     date_string = "01-01-2023"

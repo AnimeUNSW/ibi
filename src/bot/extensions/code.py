@@ -1,27 +1,24 @@
-import os
-from collections import defaultdict
-from datetime import datetime, timedelta
 import random
 import string
-from psycopg.errors import UniqueViolation
+from datetime import datetime
 
-
-import hikari
 import lightbulb
+from psycopg.errors import UniqueViolation
 from psycopg_pool import AsyncConnectionPool
 
 from .event_code_utils.date_convert import convert_string_to_date, get_unix_timestamp
 
 # constants
-EXPIRY_SECONDS = 7200 # 2 hours
+EXPIRY_SECONDS = 7200  # 2 hours
 
 
 loader = lightbulb.Loader()
 code = lightbulb.Group("code", "commands related to code")
 
+
 def generate_code() -> str:
     length = 4
-    random_string = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+    random_string = "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
     return random_string
 
 
@@ -31,15 +28,12 @@ class Create(
     name="create",
     description="creates an event",
 ):
-    end_date=lightbulb.string(
+    end_date = lightbulb.string(
         "end_date",
         "the date when the event will end format it in DD/MM/YYYY e.g. 01/01/2000",
     )
 
-    end_hour=lightbulb.string(
-        "end_hour",
-        "the hour when the event will end"
-    )
+    end_hour = lightbulb.string("end_hour", "the hour when the event will end")
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
@@ -62,11 +56,11 @@ class Create(
                 )
 
         ret_string = (
-                    f"Code generated: {code} Event ends at {self.end_date} at "
-                    f"{self.end_hour}:00 Unix timestamp is: "
-                    f"{unix_timestamp} and the code will expire in {EXPIRY_SECONDS / 3600} hours, "
-                    f"timestamp: {expiry_timestamp}"
-            )
+            f"Code generated: {code} Event ends at {self.end_date} at "
+            f"{self.end_hour}:00 Unix timestamp is: "
+            f"{unix_timestamp} and the code will expire in {EXPIRY_SECONDS / 3600} hours, "
+            f"timestamp: {expiry_timestamp}"
+        )
 
         await ctx.respond(ret_string)
 
@@ -80,29 +74,13 @@ async def code_exists(pool, event_code):
                 from events
                 where event_code = %s
                 """,
-                (event_code, )
+                (event_code,),
             )
 
             res = await cur.fetchone()
 
             return bool(res)
-        
-async def code_not_expired(pool, code, date):
-    async with pool.connection() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                """
-                SELECT 1
-                from events
-                where event_code = %s and expiry_date > %s
-                """,
-                (code, date)
-            )
 
-            res = await cur.fetchone()
-
-            return bool(res)
-        
 
 async def code_not_expired(pool, code, date):
     async with pool.connection() as conn:
@@ -113,13 +91,14 @@ async def code_not_expired(pool, code, date):
                 from events
                 where event_code = %s and expiry_date > %s
                 """,
-                (code, date)
+                (code, date),
             )
 
             res = await cur.fetchone()
 
             return bool(res)
-        
+
+
 async def try_redeem_code(pool, user_id, code):
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
@@ -129,23 +108,17 @@ async def try_redeem_code(pool, user_id, code):
                     INSERT INTO event_participants (event_code, user_id)
                     VALUES (%s, %s)
                     """,
-                    (code, user_id)
+                    (code, user_id),
                 )
                 conn.commit()
                 return True
-            except UniqueViolation as e:
+            except UniqueViolation:
                 return False
 
 
-
-
 @code.register
-class Redeem(
-    lightbulb.SlashCommand,
-    name="redeem",
-    description="enter an event code to get extra EXP!"
-):
-    code=lightbulb.string(
+class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event code to get extra EXP!"):
+    code = lightbulb.string(
         "code",
         "code given to you at the event",
     )
@@ -154,6 +127,9 @@ class Redeem(
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
         await ctx.defer()
         user = ctx.member
+        if user is None:
+            await ctx.respond("Invalid user")
+            return
         command_sent_time = get_unix_timestamp(datetime.now())
         # check that the code exists
 
@@ -170,8 +146,7 @@ class Redeem(
             username = user.nickname or user.username
             await ctx.respond(f"Thank you {username} for coming to our code! We hope to see you soon!")
         else:
-            await ctx.respond(f"You have already redeemed the code!")
-        
+            await ctx.respond("You have already redeemed the code!")
 
 
 loader.command(code)
