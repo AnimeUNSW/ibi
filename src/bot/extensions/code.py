@@ -123,13 +123,18 @@ async def code_not_expired(pool, code, date):
 async def try_redeem_code(pool, user_id, code):
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
-            await cur.execute(
-                """
-                insert into event_participants (event_code, user_id)
-                values (%s, %s)
-                """,
-                (code, user_id)
-            )
+            try:
+                await cur.execute(
+                    """
+                    INSERT INTO event_participants (event_code, user_id)
+                    VALUES (%s, %s)
+                    """,
+                    (code, user_id)
+                )
+                conn.commit()
+                return True
+            except UniqueViolation as e:
+                return False
 
 
 
@@ -148,7 +153,7 @@ class Redeem(
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
         await ctx.defer()
-
+        user = ctx.member
         command_sent_time = get_unix_timestamp(datetime.now())
         # check that the code exists
 
@@ -161,9 +166,12 @@ class Redeem(
             return
         # check that the player has not already submited the code
 
-        user = ctx.member
-        username = user.nickname or user.username
-        await ctx.respond(f"Thank you {username} for coming to our code! We hope to see you soon!")
+        if await try_redeem_code(pool, user_id=user.id, code=self.code):
+            username = user.nickname or user.username
+            await ctx.respond(f"Thank you {username} for coming to our code! We hope to see you soon!")
+        else:
+            await ctx.respond(f"You have already redeemed the code!")
+        
 
 
 loader.command(code)
