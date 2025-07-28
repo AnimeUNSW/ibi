@@ -466,10 +466,10 @@ class VerifyModal(miru.Modal):
 
 
 @verify.register
-class UserCsvs(
+class Log(
     lightbulb.SlashCommand,
     name="log",
-    description="Get verification logs as csvs",
+    description="get verification logs as csvs",
     hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.ADMINISTRATOR)],
 ):
     @lightbulb.invoke
