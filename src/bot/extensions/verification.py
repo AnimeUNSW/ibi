@@ -1,6 +1,8 @@
+import csv
 import os
 import re
 from dataclasses import dataclass
+from io import StringIO
 from typing import Literal, Self
 from urllib.request import urlopen
 
@@ -11,6 +13,7 @@ import lightbulb
 import miru
 import phonenumbers
 from mailersend import emails
+from psycopg.sql import SQL, Identifier
 from psycopg_pool import AsyncConnectionPool
 
 from bot import OwnerMention
@@ -127,8 +130,7 @@ translations: dict[SupportedLanguage, D[str]] = {
         },
         "confirmed": "Thanks for verifying, {user_info.first_name}! "
         "Please check your email, {user_info.email}, for the next step.",
-        "welcome_message": "Welcome {user}! "
-        "Feel free to leave an introduction in {introduction_channel}.",
+        "welcome_message": "Welcome {user}! Feel free to leave an introduction in {introduction_channel}.",
         "endpoint": {
             "success": "Successfully verified!",
             "fail": "Verification was not successful, please contact {owner} on Discord for support.",
@@ -169,8 +171,7 @@ translations: dict[SupportedLanguage, D[str]] = {
             "email": "请输入有效的电子邮件（例如 lbi@animeunsw.net）",
             "phone": "请输入有效的电话号码（例如 0412345678 或 +61412345678）",
         },
-        "confirmed": "感谢您的验证，{user_info.first_name}！"
-        "请检查您的电子邮件，{user_info.email}，以获取下一步指示。",
+        "confirmed": "感谢您的验证，{user_info.first_name}！请检查您的电子邮件，{user_info.email}，以获取下一步指示。",
         "welcome_message": "欢迎 {user}！欢迎在 {introduction_channel} 留下自我介绍。",
         "endpoint": {
             "success": "验证成功！",
@@ -462,6 +463,43 @@ class VerifyModal(miru.Modal):
             self.t["confirmed"].format(user_info=user_info),
             flags=hikari.messages.MessageFlag.EPHEMERAL,
         )
+
+
+@verify.register
+class UserCsvs(
+    lightbulb.SlashCommand,
+    name="log",
+    description="Get verification logs as csvs",
+    hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.ADMINISTRATOR)],
+):
+    @lightbulb.invoke
+    async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
+        await ctx.defer(ephemeral=True)
+        old_users = await get_csv(pool, "old_users")
+        new_users = await get_csv(pool, "users")
+        await ctx.respond(
+            attachments=[
+                hikari.Bytes(old_users, "old_users.csv"),
+                hikari.Bytes(new_users, "new_users.csv"),
+            ]
+        )
+
+
+async def get_csv(pool: AsyncConnectionPool, table_name: str) -> StringIO:
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            query = SQL("SELECT * FROM {}").format(Identifier(table_name))
+            await cur.execute(query)
+            if cur.description is None:
+                raise ValueError(f"{table_name} table does not exist")
+            col_names = [desc.name for desc in cur.description]
+            writer.writerow(col_names)
+            async for row in cur:
+                writer.writerow(row)
+    buffer.seek(0)
+    return buffer
 
 
 loader.command(verify)
