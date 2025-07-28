@@ -5,15 +5,14 @@ import hikari
 import lightbulb
 from psycopg.sql import SQL, Identifier
 from psycopg_pool import AsyncConnectionPool
+from .verification import verify
 
-loader = lightbulb.Loader()
 
-
-@loader.command
+@verify.register
 class UserCsvs(
     lightbulb.SlashCommand,
-    name="user_csvs",
-    description="get user csvs",
+    name="log",
+    description="Get verification logs as csvs",
     hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.ADMINISTRATOR)],
 ):
     @lightbulb.invoke
