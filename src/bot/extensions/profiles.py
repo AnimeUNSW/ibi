@@ -1,9 +1,12 @@
 import os
 from datetime import datetime
+from io import BytesIO
 
 import hikari
 import lightbulb
 from psycopg_pool import AsyncConnectionPool
+
+from bot.extensions.profile_utils.color import get_dominant_color, make_progress_bar
 
 from .profile_utils.db import cooldown, cooldowns, get_exp, get_profile
 
@@ -25,8 +28,8 @@ async def on_message(event: hikari.GuildMessageCreateEvent, pool: AsyncConnectio
     profile = await get_profile(pool, user)
     await profile.add_exp(pool, get_exp())
     new_profile = await get_profile(pool, user)
-    if profile.level != new_profile:
-        channel_id = int(os.getenv("TESTING_CHANNEL") or 0)
+    if profile.level != new_profile.level and profile.level > 0:
+        channel_id = int(os.getenv("XP_CHANNEL") or 0)
         await event.app.rest.create_message(
             channel_id, f"🎉 {user.mention} leveled up to **Level {new_profile.level}**!"
         )
@@ -87,13 +90,21 @@ class View(
         fields = translations[self.lang]["fields"]
 
         level, xp_remainder, xp_total = profile.get_level_info()
+        color = get_dominant_color(user.display_avatar_url)
+
+        xp_img = make_progress_bar(xp_remainder, xp_total, color)
+        buffer = BytesIO()
+        xp_img.save(buffer, format="PNG")
+        buffer.seek(0)
+        xp_bytes = hikari.Bytes(buffer, "xp.png")
+
         embed = (
-            hikari.Embed(title=f"{user.display_name}{fields['title']}")
+            hikari.Embed(title=f"{user.display_name}{fields['title']}", color=color)
             .set_thumbnail(user.display_avatar_url)
-            .add_field(name=str(fields["quote"]), value=str(profile.quote))
-            .add_field(name=str(fields["exp"]), value=str(profile.exp))
+            .add_field(value=str(profile.quote))
             .add_field(name=str(fields["level"]), value=f"{level} - {xp_remainder}/{xp_total} until next")
             .add_field(name=str(fields["rank"]), value=str(profile.rank))
+            .set_image(xp_bytes)
         )
 
         if profile.mal_profile is not None:
@@ -124,15 +135,18 @@ class Set(
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
-        await ctx.defer()
+        await ctx.defer(ephemeral=True)
         user = ctx.user
         profile = await get_profile(pool, user)
         if self.quote is not None:
             if len(self.quote) > 100:
-                await ctx.respond(f"Max quote length is 100 characters, provided quote is {len(self.quote)} characters")
+                await ctx.respond(
+                    f"Max quote length is 100 characters, provided quote is {len(self.quote)} characters",
+                    ephemeral=True,
+                )
                 return
             elif profile.quote == self.quote:
-                await ctx.respond("Quote same as previous quote")
+                await ctx.respond("Quote same as previous quote", ephemeral=True)
                 return
             await profile.set_quote(pool, self.quote)
 
@@ -146,7 +160,7 @@ class Set(
                 self.anilist_profile = prefixes["anilist_profile"] + self.anilist_profile
                 await profile.set_anilist_profile(pool, self.anilist_profile)
 
-        await ctx.respond("Updated profile")
+        await ctx.respond("Updated profile", ephemeral=True)
 
 
 @profile.register
@@ -159,14 +173,14 @@ class Remove(lightbulb.SlashCommand, name="remove", description="remove user pro
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
-        await ctx.defer()
+        await ctx.defer(ephemeral=True)
         user = ctx.user
         profile = await get_profile(pool, user)
 
         if self.profile_field is not None:
             await profile.remove_attribute(pool, self.profile_field)
 
-        await ctx.respond("Updated profile")
+        await ctx.respond("Updated profile", ephemeral=True)
 
 
 loader.command(profile)
