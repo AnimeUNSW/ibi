@@ -99,9 +99,8 @@ class View(
         xp_bytes = hikari.Bytes(buffer, "xp.png")
 
         embed = (
-            hikari.Embed(title=f"{user.display_name}{fields['title']}", color=color)
+            hikari.Embed(title=f"{user.display_name}{fields['title']}", description=str(profile.quote), color=color)
             .set_thumbnail(user.display_avatar_url)
-            .add_field(value=str(profile.quote))
             .add_field(name=str(fields["level"]), value=f"{level} - {xp_remainder}/{xp_total} until next")
             .add_field(name=str(fields["rank"]), value=str(profile.rank))
             .set_image(xp_bytes)
