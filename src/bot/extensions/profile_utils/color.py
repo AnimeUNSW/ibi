@@ -60,11 +60,11 @@ def make_progress_bar(xp: int, total: int, color: hikari.Color | None):
     if color is None:
         # Just some default blue-ish color
         color = hikari.Color(0x2892D7)
-    width, height = 600, 40
+    width, height = 600, 20
     bg_color = (250, 250, 250, 255)
     bar_color = (40, 146, 215, 255)
-    padding = 5
-    radius = 20
+    padding = 4
+    radius = height // 2
 
     img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)

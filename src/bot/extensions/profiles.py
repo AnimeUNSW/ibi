@@ -41,30 +41,22 @@ translations = {
     "en": {
         "fields": {
             "title": "'s profile",
-            "quote": "quote",
-            "exp": "exp",
-            "level": "level",
-            "rank": "rank",
-            "mal_profile": "mal profile",
-            "anilist_profile": "anilist profile",
-            "hyperlink": "click me!",
+            "level": "Level",
+            "rank": "Rank",
+            "mal_profile": "MAL",
+            "anilist_profile": "AniList",
         },
     },
     "cn": {
         "fields": {
             "title": "的轮廓",
-            "quote": "引用",
-            "exp": "XP",
             "level": "等级",
             "rank": "秩",
             "mal_profile": "MAL轮廓",
             "anilist_profile": "AniList轮廓",
-            "hyperlink": "点我！",
         },
     },
 }
-
-prefixes = {"anilist_profile": "https://anilist.co/user/", "mal_profile": "https://myanimelist.net/profile/"}
 
 
 @profile.register
@@ -101,21 +93,21 @@ class View(
         embed = (
             hikari.Embed(title=f"{user.display_name}{fields['title']}", description=str(profile.quote), color=color)
             .set_thumbnail(user.display_avatar_url)
-            .add_field(name=str(fields["level"]), value=f"{level} - {xp_remainder}/{xp_total} until next")
             .add_field(name=str(fields["rank"]), value=str(profile.rank))
+            .add_field(name=str(fields["level"]), value=f"{level} - {xp_remainder}/{xp_total} until next")
             .set_image(xp_bytes)
         )
 
         if profile.mal_profile is not None:
             embed.add_field(
                 name=str(fields["mal_profile"]),
-                value=f"[{fields['hyperlink']}]({profile.mal_profile})",
+                value=f"[{profile.mal_profile}]({profile.mal_url})",
             )
 
         if profile.anilist_profile is not None:
             embed.add_field(
                 name=str(fields["anilist_profile"]),
-                value=f"[{fields['hyperlink']}]({profile.anilist_profile})",
+                value=f"[{profile.anilist_profile}]({profile.anilist_url})",
             )
 
         await ctx.respond(embed=embed)
@@ -151,12 +143,10 @@ class Set(
 
         if self.mal_profile is not None:
             if profile.mal_profile != self.mal_profile:
-                self.mal_profile = prefixes["mal_profile"] + self.mal_profile
                 await profile.set_mal_profile(pool, self.mal_profile)
 
         if self.anilist_profile is not None:
             if profile.anilist_profile != self.anilist_profile:
-                self.anilist_profile = prefixes["anilist_profile"] + self.anilist_profile
                 await profile.set_anilist_profile(pool, self.anilist_profile)
 
         await ctx.respond("Updated profile", ephemeral=True)

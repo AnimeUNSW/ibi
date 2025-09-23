@@ -66,6 +66,14 @@ class Profile:
     def level(self) -> int:
         return self.get_level_info()[0]
 
+    @property
+    def mal_url(self) -> str:
+        return f"https://myanimelist.net/profile/{self.mal_profile}"
+
+    @property
+    def anilist_url(self) -> str:
+        return f"https://anilist.co/user/{self.anilist_profile}"
+
     @classmethod
     def from_row(cls, row: DictRow):
         return cls(
