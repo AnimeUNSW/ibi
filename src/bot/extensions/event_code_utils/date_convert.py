@@ -8,7 +8,3 @@ def convert_string_to_date(date_string: str, hour: str) -> datetime:
     day, month, year = re.split(r"[\/\.\-]", date_string.strip())
     native_date = datetime(int(year), int(month), int(day), int(hour), 0, 0, tzinfo=ZoneInfo("Australia/Sydney"))
     return native_date
-
-
-def get_unix_timestamp(date: datetime) -> int:
-    return round(date.timestamp())
