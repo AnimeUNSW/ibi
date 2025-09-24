@@ -40,7 +40,7 @@ profile = lightbulb.Group("profile", "commands related to user profiles")
 translations = {
     "en": {
         "fields": {
-            "title": "'s profile",
+            "title": "'s Profile",
             "level": "Level",
             "rank": "Rank",
             "mal_profile": "MAL",
