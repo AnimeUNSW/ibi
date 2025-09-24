@@ -37,8 +37,8 @@ class Create(
     )
     xp_amount = lightbulb.integer(
         "xp_amount",
-        "how much xp the code gives",
-        choices=[lightbulb.Choice(f"{amount} xp", amount) for amount in range(250, 1001, 250)],
+        "how much XP the code gives",
+        choices=[lightbulb.Choice(f"{amount} XP", amount) for amount in range(250, 1001, 250)],
     )
 
     @lightbulb.invoke
@@ -48,7 +48,10 @@ class Create(
         try:
             event_end_date = convert_string_to_date(self.end_date, self.end_hour)
         except ValueError:
-            await ctx.respond(f"Invalid end_date ({self.end_date}) or end_hour ({self.end_hour}).")
+            await ctx.respond(
+                f"Invalid `end_date` ({self.end_date}) or `end_hour` ({self.end_hour}).",
+                ephemeral=True,
+            )
             return
         unix_timestamp = int(event_end_date.timestamp())
 
@@ -68,7 +71,9 @@ class Create(
                     if not await cur.fetchone():
                         break
         else:  # 3 tries to generate a unique code, if failed then error
-            await ctx.respond("Could not generate a unique code. Please purge the database of old codes.")
+            await ctx.respond(
+                "Could not generate a unique code. Please purge the database of old codes."
+            )
             return
 
         async with pool.connection() as conn:
@@ -81,7 +86,7 @@ class Create(
                     (code, unix_timestamp, self.xp_amount),
                 )
 
-        await ctx.respond(f"Code generated: {code}\nEvent ends in <t:{unix_timestamp}:R>")
+        await ctx.respond(f"Code generated: `{code}`\nEvent ends in <t:{unix_timestamp}:R>")
 
 
 async def get_code_xp_amount(pool, event_code) -> int | None:
@@ -136,7 +141,9 @@ async def try_redeem_code(pool, user_id, code):
 
 
 @code.register
-class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event code to get extra EXP!"):
+class Redeem(
+    lightbulb.SlashCommand, name="redeem", description="enter an event code to get extra EXP!"
+):
     code = lightbulb.string(
         "code",
         "code given to you at the event",
@@ -147,19 +154,19 @@ class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event 
         await ctx.defer(ephemeral=True)
         user = ctx.member
         if user is None:
-            await ctx.respond("Invalid user", ephemeral=True)
+            await ctx.respond("Invalid user.", ephemeral=True)
             return
         command_sent_time = int(datetime.now().timestamp())
 
         # check that the code exists
         xp_amount = await get_code_xp_amount(pool, self.code)
         if xp_amount is None:
-            await ctx.respond(f"Invalid code: {self.code}", ephemeral=True)
+            await ctx.respond(f"Invalid code: `{self.code}`.", ephemeral=True)
             return
 
         # check that the code has not expired
         if not await code_not_expired(pool, self.code, command_sent_time):
-            await ctx.respond(f"Code: {self.code} expired", ephemeral=True)
+            await ctx.respond(f"Code: `{self.code}` has expired.", ephemeral=True)
             return
 
         # check that the player has not already submited the code
@@ -167,10 +174,11 @@ class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event 
             profile = await get_profile(pool, user)
             await profile.add_exp(pool, xp_amount)
             await ctx.respond(
-                f"Thank you {user.mention} for coming to our event! We hope to see you soon!", ephemeral=True
+                f"Thank you {user.mention} for coming to our event! We hope to see you again soon!",
+                ephemeral=True,
             )
         else:
-            await ctx.respond("You have already redeemed the code!", ephemeral=True)
+            await ctx.respond("You have already redeemed this code!", ephemeral=True)
 
 
 loader.command(code)

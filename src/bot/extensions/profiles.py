@@ -90,13 +90,11 @@ class View(
         buffer.seek(0)
         xp_bytes = hikari.Bytes(buffer, "xp.png")
 
-        embed = (
-            hikari.Embed(title=f"{user.display_name}{fields['title']}", description=str(profile.quote), color=color)
-            .set_thumbnail(user.display_avatar_url)
-            .add_field(name=str(fields["rank"]), value=str(profile.rank))
-            .add_field(name=str(fields["level"]), value=f"{level} - {xp_remainder}/{xp_total} until next")
-            .set_image(xp_bytes)
-        )
+        embed = hikari.Embed(
+            title=f"{user.display_name}{fields['title']}",
+            description=str(profile.quote),
+            color=color,
+        ).set_thumbnail(user.display_avatar_url)
 
         if profile.mal_profile is not None:
             embed.add_field(
@@ -110,6 +108,12 @@ class View(
                 value=f"[{profile.anilist_profile}]({profile.anilist_url})",
             )
 
+        embed.add_field(name=str(fields["rank"]), value="#" + str(profile.rank))
+        embed.add_field(
+            name=str(fields["level"]), value=f"{level}—{xp_remainder}/{xp_total} until next"
+        )
+        embed.set_image(xp_bytes)
+
         await ctx.respond(embed=embed)
 
 
@@ -119,10 +123,12 @@ class Set(
     name="set",
     description="set user profile details",
 ):
-    quote = lightbulb.string("quote", "new quote to set", default=None)
+    quote = lightbulb.string("quote", "quote to be displayed (max 100 characters)", default=None)
 
-    mal_profile = lightbulb.string("mal", "Enter your username for your MAL profile", default=None)
-    anilist_profile = lightbulb.string("anilist", "Enter your username for your AniList profile", default=None)
+    mal_profile = lightbulb.string("mal", "username (not link) for your MAL profile", default=None)
+    anilist_profile = lightbulb.string(
+        "anilist", "username (not link) for your AniList profile", default=None
+    )
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
@@ -132,12 +138,12 @@ class Set(
         if self.quote is not None:
             if len(self.quote) > 100:
                 await ctx.respond(
-                    f"Max quote length is 100 characters, provided quote is {len(self.quote)} characters",
+                    f"Max quote length is 100 characters, provided quote is {len(self.quote)} characters.",
                     ephemeral=True,
                 )
                 return
             elif profile.quote == self.quote:
-                await ctx.respond("Quote same as previous quote", ephemeral=True)
+                await ctx.respond("Quote same as previous quote.", ephemeral=True)
                 return
             await profile.set_quote(pool, self.quote)
 
@@ -149,15 +155,20 @@ class Set(
             if profile.anilist_profile != self.anilist_profile:
                 await profile.set_anilist_profile(pool, self.anilist_profile)
 
-        await ctx.respond("Updated profile", ephemeral=True)
+        await ctx.respond("Profile updated!", ephemeral=True)
 
 
 @profile.register
-class Remove(lightbulb.SlashCommand, name="remove", description="remove user profile details"):
+class Remove(
+    lightbulb.SlashCommand, name="remove", description="remove certain fields of your profile"
+):
     profile_field = lightbulb.string(
         "field",
-        "field of profile you want to delete",
-        choices=[lightbulb.Choice("MAL", "mal_profile"), lightbulb.Choice("AniList", "anilist_profile")],
+        "field of profile you want to remove",
+        choices=[
+            lightbulb.Choice("MAL", "mal_profile"),
+            lightbulb.Choice("AniList", "anilist_profile"),
+        ],
     )
 
     @lightbulb.invoke
@@ -169,7 +180,7 @@ class Remove(lightbulb.SlashCommand, name="remove", description="remove user pro
         if self.profile_field is not None:
             await profile.remove_attribute(pool, self.profile_field)
 
-        await ctx.respond("Updated profile", ephemeral=True)
+        await ctx.respond("Profile updated!", ephemeral=True)
 
 
 loader.command(profile)
