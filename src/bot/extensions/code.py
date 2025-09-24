@@ -1,15 +1,13 @@
 import random
 import string
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import lightbulb
 from psycopg.errors import UniqueViolation
 from psycopg_pool import AsyncConnectionPool
 
 from bot.extensions.profile_utils.db import get_profile
-
-from .event_code_utils.date_convert import convert_string_to_date
-
 
 loader = lightbulb.Loader()
 code = lightbulb.Group("code", "commands related to code")
@@ -27,13 +25,9 @@ class Create(
     name="create",
     description="creates an event",
 ):
-    end_date = lightbulb.string(
-        "end_date",
-        "the date when the event will end format it in DD/MM/YYYY e.g. 01/01/2000",
-    )
-    end_hour = lightbulb.string(
-        "end_hour",
-        "the hour when the event will end",
+    end_time = lightbulb.string(
+        "end_time",
+        "the date when the event will end format it in DD/MM/YYYY HH:MM e.g. 01/01/2000 17:30",
     )
     xp_amount = lightbulb.integer(
         "xp_amount",
@@ -43,15 +37,15 @@ class Create(
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
-        await ctx.defer()
+        await ctx.defer(ephemeral=True)
 
         try:
-            event_end_date = convert_string_to_date(self.end_date, self.end_hour)
+            event_end_date = datetime.strptime(
+                self.end_time,
+                "%d/%m/%Y %H:%M",
+            ).replace(tzinfo=ZoneInfo("Australia/Sydney"))
         except ValueError:
-            await ctx.respond(
-                f"Invalid `end_date` ({self.end_date}) or `end_hour` ({self.end_hour}).",
-                ephemeral=True,
-            )
+            await ctx.respond(f"Invalid `end_time` ({self.end_time})")
             return
         unix_timestamp = int(event_end_date.timestamp())
 
@@ -71,9 +65,7 @@ class Create(
                     if not await cur.fetchone():
                         break
         else:  # 3 tries to generate a unique code, if failed then error
-            await ctx.respond(
-                "Could not generate a unique code. Please purge the database of old codes."
-            )
+            await ctx.respond("Could not generate a unique code. Please purge the database of old codes.")
             return
 
         async with pool.connection() as conn:
@@ -141,9 +133,7 @@ async def try_redeem_code(pool, user_id, code):
 
 
 @code.register
-class Redeem(
-    lightbulb.SlashCommand, name="redeem", description="enter an event code to get extra EXP!"
-):
+class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event code to get extra EXP!"):
     code = lightbulb.string(
         "code",
         "code given to you at the event",
@@ -154,19 +144,19 @@ class Redeem(
         await ctx.defer(ephemeral=True)
         user = ctx.member
         if user is None:
-            await ctx.respond("Invalid user.", ephemeral=True)
+            await ctx.respond("Invalid user.")
             return
         command_sent_time = int(datetime.now().timestamp())
 
         # check that the code exists
         xp_amount = await get_code_xp_amount(pool, self.code)
         if xp_amount is None:
-            await ctx.respond(f"Invalid code: `{self.code}`.", ephemeral=True)
+            await ctx.respond(f"Invalid code: `{self.code}`.")
             return
 
         # check that the code has not expired
         if not await code_not_expired(pool, self.code, command_sent_time):
-            await ctx.respond(f"Code: `{self.code}` has expired.", ephemeral=True)
+            await ctx.respond(f"Code: `{self.code}` has expired.")
             return
 
         # check that the player has not already submited the code
@@ -175,10 +165,23 @@ class Redeem(
             await profile.add_exp(pool, xp_amount)
             await ctx.respond(
                 f"Thank you {user.mention} for coming to our event! We hope to see you again soon!",
-                ephemeral=True,
             )
         else:
-            await ctx.respond("You have already redeemed this code!", ephemeral=True)
+            await ctx.respond("You have already redeemed this code!")
 
 
 loader.command(code)
+
+
+@loader.task(lightbulb.uniformtrigger(hours=24))
+async def purge_expired_events(pool: AsyncConnectionPool):
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            # DELETE ON CASCADE is on for event_participants so it handles that automatically
+            await cur.execute(
+                """
+                DELETE FROM events
+                WHERE expiry_date < %s
+                """,
+                (int(datetime.now().timestamp()),),
+            )

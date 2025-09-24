@@ -1,9 +1,32 @@
 import colorsys
+import math
+from functools import partial
 from io import BytesIO
 
 import hikari
 import requests
 from PIL import Image, ImageDraw
+
+type RGB = tuple[int, int, int]
+
+# fg color to bg color
+fg_to_bg = {
+    (255, 104, 104): (252, 206, 206),
+    (251, 140, 65): (255, 212, 183),
+    (232, 197, 72): (255, 244, 203),
+    (152, 219, 107): (221, 245, 205),
+    (71, 233, 109): (195, 255, 209),
+    (54, 215, 175): (190, 248, 234),
+    (122, 203, 233): (208, 241, 254),
+    (93, 151, 243): (197, 216, 247),
+    (86, 80, 254): (206, 204, 252),
+    (135, 83, 240): (217, 200, 252),
+    (197, 84, 249): (239, 207, 253),
+    (239, 79, 229): (242, 194, 239),
+    (242, 102, 186): (255, 198, 232),
+    (241, 64, 123): (249, 194, 212),
+    (36, 36, 41): (210, 210, 221),
+}
 
 
 def get_dominant_color(url: hikari.URL) -> hikari.Color | None:
@@ -29,6 +52,8 @@ def get_dominant_color(url: hikari.URL) -> hikari.Color | None:
     if not colors:
         return None
     color_counts = sorted(colors, reverse=True)
+
+    # Return the most popular vibrant accent color, otherwise return most popular
     idx = color_counts[0][1]
     for _, idx in color_counts:
         rgb = palette[3 * idx : 3 * idx + 3]  # type: ignore[reportOperatorIssue]
@@ -56,17 +81,19 @@ def is_vibrant_accent(rgb):
     return False
 
 
-def make_progress_bar(xp: int, total: int, color: hikari.Color | None):
-    if color is None:
-        # Just some default blue-ish color
-        color = hikari.Color(0x2892D7)
+def get_colors(dominant_color: hikari.Color | None) -> tuple[RGB, RGB]:
+    if dominant_color is None:
+        return next(iter(fg_to_bg.items()))
+    fg_color = min(fg_to_bg, key=partial(math.dist, dominant_color.rgb))
+    return fg_color, fg_to_bg[fg_color]
+
+
+def make_progress_bar(xp: int, total: int, fg_color: RGB, bg_color: RGB):
     width, height = 600, 20
-    bg_color = (250, 250, 250, 255)
-    bar_color = (40, 146, 215, 255)
     padding = 4
     radius = height // 2
 
-    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    img = Image.new("RGB", (width, height), (0, 0, 0))
     draw = ImageDraw.Draw(img)
     draw.rounded_rectangle([0, 0, width, height], radius=radius, fill=bg_color)
     filled = int(width * xp / total)
@@ -74,6 +101,6 @@ def make_progress_bar(xp: int, total: int, color: hikari.Color | None):
         draw.rounded_rectangle(
             [padding, padding, filled - padding, height - padding],
             radius=radius,
-            fill=bar_color,
+            fill=fg_color,
         )
     return img

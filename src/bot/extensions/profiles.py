@@ -6,7 +6,7 @@ import hikari
 import lightbulb
 from psycopg_pool import AsyncConnectionPool
 
-from bot.extensions.profile_utils.color import get_dominant_color, make_progress_bar
+from bot.extensions.profile_utils.color import get_colors, get_dominant_color, make_progress_bar
 
 from .profile_utils.db import cooldown, cooldowns, get_exp, get_profile
 
@@ -82,9 +82,10 @@ class View(
         fields = translations[self.lang]["fields"]
 
         level, xp_remainder, xp_total = profile.get_level_info()
-        color = get_dominant_color(user.display_avatar_url)
+        dominant_color = get_dominant_color(user.display_avatar_url)
+        fg_color, bg_color = get_colors(dominant_color)
 
-        xp_img = make_progress_bar(xp_remainder, xp_total, color)
+        xp_img = make_progress_bar(xp_remainder, xp_total, fg_color, bg_color)
         buffer = BytesIO()
         xp_img.save(buffer, format="PNG")
         buffer.seek(0)
@@ -93,7 +94,7 @@ class View(
         embed = hikari.Embed(
             title=f"{user.display_name}{fields['title']}",
             description=str(profile.quote),
-            color=color,
+            color=dominant_color,
         ).set_thumbnail(user.display_avatar_url)
 
         if profile.mal_profile is not None:
@@ -109,9 +110,7 @@ class View(
             )
 
         embed.add_field(name=str(fields["rank"]), value="#" + str(profile.rank))
-        embed.add_field(
-            name=str(fields["level"]), value=f"{level}—{xp_remainder}/{xp_total} until next"
-        )
+        embed.add_field(name=str(fields["level"]), value=f"{level}—{xp_remainder}/{xp_total} until next")
         embed.set_image(xp_bytes)
 
         await ctx.respond(embed=embed)
@@ -126,9 +125,7 @@ class Set(
     quote = lightbulb.string("quote", "quote to be displayed (max 100 characters)", default=None)
 
     mal_profile = lightbulb.string("mal", "username (not link) for your MAL profile", default=None)
-    anilist_profile = lightbulb.string(
-        "anilist", "username (not link) for your AniList profile", default=None
-    )
+    anilist_profile = lightbulb.string("anilist", "username (not link) for your AniList profile", default=None)
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
@@ -159,9 +156,7 @@ class Set(
 
 
 @profile.register
-class Remove(
-    lightbulb.SlashCommand, name="remove", description="remove certain fields of your profile"
-):
+class Remove(lightbulb.SlashCommand, name="remove", description="remove certain fields of your profile"):
     profile_field = lightbulb.string(
         "field",
         "field of profile you want to remove",
