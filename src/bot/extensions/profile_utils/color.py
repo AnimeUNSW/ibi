@@ -1,6 +1,4 @@
-import colorsys
 import math
-from functools import partial
 from io import BytesIO
 
 import hikari
@@ -29,7 +27,19 @@ fg_to_bg = {
 }
 
 
-def get_dominant_color(url: hikari.URL) -> hikari.Color | None:
+def rgb_to_yuv(color: RGB) -> tuple[float, float, float]:
+    r, g, b = color
+    return (
+        0.299 * r + 0.587 * g + 0.114 * b,
+        -0.14713 * r - 0.28886 * g + 0.436 * b,
+        0.615 * r - 0.51499 * g - 0.10001 * b,
+    )
+
+
+fg_rgb_to_yuv = {color: rgb_to_yuv(color) for color in fg_to_bg}
+
+
+def get_dominant_color(url: hikari.URL) -> RGB | None:
     try:
         res = requests.get(url.url, timeout=10)
         res.raise_for_status()
@@ -44,48 +54,46 @@ def get_dominant_color(url: hikari.URL) -> hikari.Color | None:
         return None
 
     img = Image.open(BytesIO(res.content))
-    paletted = img.convert("P", palette=Image.ADAPTIVE, colors=16)  # type: ignore[reportAttributeAccessIssue]
-    palette = paletted.getpalette()
-    if palette is None:
-        return None
-    colors = paletted.getcolors()
-    if not colors:
-        return None
-    color_counts = sorted(colors, reverse=True)
+    img = img.convert("RGB").resize((16, 16))
+    pixels = [*img.getdata()]
 
-    # Return the most popular vibrant accent color, otherwise return most popular
-    idx = color_counts[0][1]
-    for _, idx in color_counts:
-        rgb = palette[3 * idx : 3 * idx + 3]  # type: ignore[reportOperatorIssue]
-        if is_vibrant_accent(rgb):
-            return hikari.Color.of(rgb)
-    # If can't, just return most popular color
-    idx = color_counts[0][1]
-    rgb = palette[3 * idx : 3 * idx + 3]  # type: ignore[reportOperatorIssue]
-    return hikari.Color.of(rgb)
+    def similarity(color: RGB) -> float:
+        k = 0.03
+        threshold = 60
 
+        score = 0
+        num_similar = 0
+        for pixel in pixels:
+            d = math.dist(fg_rgb_to_yuv[color], rgb_to_yuv(pixel))
+            if d < threshold:
+                print(d)
+                score += math.exp(-k * d * d)
+                num_similar += 1
+        if num_similar < 30:
+            return float("-inf")
+        return score
 
-def is_vibrant_accent(rgb):
-    r, g, b = [x / 255 for x in rgb]
-    h, s, v = colorsys.rgb_to_hsv(r, g, b)
-    if s < 0.5 or v < 0.4 or v > 0.9:
-        return False
+    black = (36, 36, 41)
 
-    if (0.0 <= h <= 0.05) or (0.95 <= h <= 1.0):  # red
-        return True
-    elif 0.25 <= h <= 0.45:  # green
-        return True
-    elif 0.55 <= h <= 0.75:  # blue
-        return True
+    cbest = None
+    cbest_score = 0
+    for color in fg_to_bg:
+        if color != black:
+            score = similarity(color)
+            if score == float("-inf"):
+                continue
+            if score > cbest_score:
+                cbest_score = score
+                cbest = color
 
-    return False
+    return cbest or black
 
 
-def get_colors(dominant_color: hikari.Color | None) -> tuple[RGB, RGB]:
+def get_colors(url: hikari.URL) -> tuple[RGB, RGB]:
+    dominant_color = get_dominant_color(url)
     if dominant_color is None:
         return next(iter(fg_to_bg.items()))
-    fg_color = min(fg_to_bg, key=partial(math.dist, dominant_color.rgb))
-    return fg_color, fg_to_bg[fg_color]
+    return dominant_color, fg_to_bg[dominant_color]
 
 
 def make_progress_bar(xp: int, total: int, fg_color: RGB, bg_color: RGB):
@@ -97,7 +105,7 @@ def make_progress_bar(xp: int, total: int, fg_color: RGB, bg_color: RGB):
     draw = ImageDraw.Draw(img)
     draw.rounded_rectangle([0, 0, width, height], radius=radius, fill=bg_color)
     filled = int(width * xp / total)
-    if filled > 0:
+    if filled > 0 and padding < filled - padding:
         draw.rounded_rectangle(
             [padding, padding, filled - padding, height - padding],
             radius=radius,

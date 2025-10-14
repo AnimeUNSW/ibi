@@ -6,7 +6,7 @@ import hikari
 import lightbulb
 from psycopg_pool import AsyncConnectionPool
 
-from bot.extensions.profile_utils.color import get_colors, get_dominant_color, make_progress_bar
+from bot.extensions.profile_utils.color import get_colors, make_progress_bar
 
 from .profile_utils.db import cooldown, cooldowns, get_exp, get_profile
 
@@ -82,8 +82,7 @@ class View(
         fields = translations[self.lang]["fields"]
 
         level, xp_remainder, xp_total = profile.get_level_info()
-        dominant_color = get_dominant_color(user.display_avatar_url)
-        fg_color, bg_color = get_colors(dominant_color)
+        fg_color, bg_color = get_colors(user.display_avatar_url)
 
         xp_img = make_progress_bar(xp_remainder, xp_total, fg_color, bg_color)
         buffer = BytesIO()
@@ -94,7 +93,7 @@ class View(
         embed = hikari.Embed(
             title=f"{user.display_name}{fields['title']}",
             description=str(profile.quote),
-            color=dominant_color,
+            color=fg_color,
         ).set_thumbnail(user.display_avatar_url)
 
         if profile.mal_profile is not None:

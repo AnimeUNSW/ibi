@@ -48,6 +48,8 @@ class Profile:
         Returns:
             (current level, remaining xp until next level, xp required for next level)
         """
+        if self.exp <= 0:
+            return 0, self.exp, LEVEL_ONE_XP_REQ
         lower, upper = 0, 1
         while self.exp >= exp_for_level(upper):
             upper *= 2
