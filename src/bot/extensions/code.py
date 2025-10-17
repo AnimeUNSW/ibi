@@ -3,6 +3,7 @@ import string
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+import hikari
 import lightbulb
 from psycopg.errors import UniqueViolation
 from psycopg_pool import AsyncConnectionPool
@@ -39,13 +40,17 @@ class Create(
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
         await ctx.defer(ephemeral=True)
 
+        tz = ZoneInfo("Australia/Sydney")
         try:
             event_end_date = datetime.strptime(
                 self.end_time,
                 "%d/%m/%Y %H:%M",
-            ).replace(tzinfo=ZoneInfo("Australia/Sydney"))
+            ).replace(tzinfo=tz)
         except ValueError:
-            await ctx.respond(f"Invalid `end_time` ({self.end_time})")
+            await ctx.respond(f"Invalid `end_time` ({self.end_time}).\nGive time in DD/MM/YYYY HH:MM format.")
+            return
+        if event_end_date < datetime.now(tz):
+            await ctx.respond(f"Provided `end_time` of ({event_end_date}) is in the past.")
             return
         unix_timestamp = int(event_end_date.timestamp())
 
@@ -78,7 +83,8 @@ class Create(
                     (code, unix_timestamp, self.xp_amount),
                 )
 
-        await ctx.respond(f"Code generated: `{code}`\nEvent ends in <t:{unix_timestamp}:R>")
+        embed = hikari.Embed(description=f"Code generated: `{code}`\nEvent ends <t:{unix_timestamp}:R>")
+        await ctx.respond(embed=embed, ephemeral=False)
 
 
 async def get_code_xp_amount(pool, event_code) -> int | None:

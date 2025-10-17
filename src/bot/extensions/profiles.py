@@ -109,7 +109,7 @@ class View(
             )
 
         embed.add_field(name=str(fields["rank"]), value="#" + str(profile.rank))
-        embed.add_field(name=str(fields["level"]), value=f"{level}—{xp_remainder}/{xp_total} until next")
+        embed.add_field(name=str(fields["level"]), value=f"{level} | {xp_remainder}/{xp_total}")
         embed.set_image(xp_bytes)
 
         await ctx.respond(embed=embed)
