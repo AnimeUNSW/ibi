@@ -13,8 +13,8 @@ mod = lightbulb.Group("mod", "commands for moderators")
 class Reset(
     lightbulb.SlashCommand,
     name="reset",
-    description="reset a user's profile",
-    hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.ADMINISTRATOR)],
+    description="reset fields in a user's profile",
+    hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.MODERATE_MEMBERS)],
 ):
     user = lightbulb.user("user", "the user")
     field = lightbulb.string(
@@ -43,7 +43,7 @@ class Reset(
         if self.field == "all":
             await ctx.respond(f"{self.user.mention}'s profile has been reset!")
         else:
-            await ctx.respond(f"{self.user.mention}'s {self.field} has been reset!")
+            await ctx.respond(f"{self.user.mention}'s {self.field} field has been reset!")
 
 
 loader.command(mod)
