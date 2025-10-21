@@ -10,15 +10,20 @@ from bot import extensions
 
 load_dotenv()
 
-
-bot = hikari.GatewayBot(os.getenv("TOKEN"), logs="DEBUG")
+token = os.getenv("TOKEN")
+if not token:
+    raise ValueError("Set TOKEN in .env file")
+bot = hikari.GatewayBot(token, logs="DEBUG")
 client = lightbulb.client_from_app(bot)
 
 miru_client = miru.Client(bot, ignore_unknown_interactions=True)
 client.di.registry_for(lightbulb.di.Contexts.DEFAULT).register_value(miru.Client, miru_client)
 
+owner_id = os.getenv("OWNER_ID")
+if not owner_id:
+    raise ValueError("Set OWNER_ID in .env file")
 type OwnerMention = str
-client.di.registry_for(lightbulb.di.Contexts.DEFAULT).register_value(OwnerMention, "<@" + os.getenv("OWNER_ID") + ">")
+client.di.registry_for(lightbulb.di.Contexts.DEFAULT).register_value(OwnerMention, f"<@{owner_id}>")  # type: ignore[reportArgumentType]
 
 
 @client.error_handler
@@ -32,7 +37,10 @@ async def handler(exc: lightbulb.exceptions.ExecutionPipelineFailedException) ->
 
 @bot.listen(hikari.StartingEvent)
 async def on_starting(_: hikari.StartingEvent) -> None:
-    pool = AsyncConnectionPool(os.getenv("DATABASE_URL"))
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise ValueError("Set DATABASE_URL in .env file")
+    pool = AsyncConnectionPool(db_url)
     await pool.open()
     client.di.registry_for(lightbulb.di.Contexts.DEFAULT).register_value(AsyncConnectionPool, pool, teardown=pool.close)
 

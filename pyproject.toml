@@ -5,6 +5,7 @@ description = "AnimeUNSW public server Discord bot"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "attrs>=25.3.0",
     "dotenv>=0.9.9",
     "email-validator>=2.2.0",
     "fastapi>=0.115.12",
@@ -13,13 +14,14 @@ dependencies = [
     "hikari-miru>=4.2.0",
     "mailersend>=0.6.0",
     "phonenumbers>=9.0.6",
+    "pillow>=11.3.0",
     "psycopg[binary,pool]>=3.2.9",
     "pyjwt>=2.10.1",
     "uvicorn>=0.34.2",
 ]
 
 [project.scripts]
-bot = "bot:__main__"
+bot = "bot:bot.run"
 
 [build-system]
 requires = ["setuptools"]
@@ -30,6 +32,9 @@ where = ["src"]
 
 [tool.ruff]
 line-length = 120
+
+[tool.basedpyright]
+typeCheckingMode = "basic"
 
 [dependency-groups]
 dev = [
