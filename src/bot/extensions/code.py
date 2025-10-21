@@ -1,3 +1,4 @@
+import os
 import random
 import string
 from datetime import datetime
@@ -37,7 +38,7 @@ class Create(
     )
 
     @lightbulb.invoke
-    async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
+    async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool, client: hikari.api.RESTClient) -> None:
         await ctx.defer(ephemeral=True)
 
         tz = ZoneInfo("Australia/Sydney")
@@ -84,7 +85,8 @@ class Create(
                 )
 
         embed = hikari.Embed(description=f"Code generated: `{code}`\nEvent ends <t:{unix_timestamp}:R>")
-        await ctx.respond(embed=embed, ephemeral=False)
+        channel_id = int(os.getenv("EVENT_CODES_CHANNEL") or 0)
+        await client.create_message(channel_id, embed=embed)
 
 
 async def get_code_xp_amount(pool, event_code) -> int | None:
