@@ -65,12 +65,12 @@ class View(
     name="view",
     description="view a user's profile (defaults to your own)",
 ):
-    lang = lightbulb.string(
-        "language",
-        "the language of the view to be sent",
-        choices=[lightbulb.Choice("English", "en"), lightbulb.Choice("Chinese", "cn")],
-        default="en",
-    )
+    # lang = lightbulb.string(
+    #     "language",
+    #     "the language of the view to be sent",
+    #     choices=[lightbulb.Choice("English", "en"), lightbulb.Choice("Chinese", "cn")],
+    #     default="en",
+    # )
 
     user = lightbulb.user("user", "the user, defaults to yourself", default=None)
 
@@ -79,7 +79,8 @@ class View(
         await ctx.defer()
         user = self.user or ctx.user
         profile = await get_profile(pool, user)
-        fields = translations[self.lang]["fields"]
+        # fields = translations[self.lang]["fields"]
+        fields = translations["en"]["fields"]
 
         level, xp_remainder, xp_total = profile.get_level_info()
         fg_color, bg_color = get_colors(user.display_avatar_url)
