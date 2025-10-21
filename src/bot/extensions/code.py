@@ -21,74 +21,6 @@ def generate_code() -> str:
     return random_string
 
 
-@code.register
-class Create(
-    lightbulb.SlashCommand,
-    name="create",
-    description="creates a code for an event",
-):
-    end_time = lightbulb.string(
-        "end_time",
-        "format as DD/MM/YYYY HH:MM, e.g. 01/01/2000 17:30",
-    )
-    xp_amount = lightbulb.integer(
-        "xp_amount",
-        "how much XP the code gives",
-        choices=[lightbulb.Choice(f"{amount} XP", amount) for amount in range(250, 1001, 250)],
-    )
-
-    @lightbulb.invoke
-    async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool, client: lightbulb.Client) -> None:
-        await ctx.defer(ephemeral=True)
-
-        tz = ZoneInfo("Australia/Sydney")
-        try:
-            event_end_date = datetime.strptime(
-                self.end_time,
-                "%d/%m/%Y %H:%M",
-            ).replace(tzinfo=tz)
-        except ValueError:
-            await ctx.respond(f"Invalid `end_time` ({self.end_time}).\nGive time in DD/MM/YYYY HH:MM format.")
-            return
-        if event_end_date < datetime.now(tz):
-            await ctx.respond(f"Provided `end_time` of ({event_end_date}) is in the past.")
-            return
-        unix_timestamp = int(event_end_date.timestamp())
-
-        # Try to generate a code
-        for _ in range(3):
-            code = generate_code()
-            async with pool.connection() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(
-                        """
-                        SELECT 1
-                        FROM events
-                        WHERE event_code = %s
-                        """,
-                        (code,),
-                    )
-                    if not await cur.fetchone():
-                        break
-        else:  # 3 tries to generate a unique code, if failed then error
-            await ctx.respond("Could not generate a unique code. Please purge the database of old codes.")
-            return
-
-        async with pool.connection() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    """
-                    INSERT INTO events (event_code, expiry_date, xp_amount)
-                    VALUES (%s, %s, %s)
-                    """,
-                    (code, unix_timestamp, self.xp_amount),
-                )
-
-        embed = hikari.Embed(description=f"Code: `{code}`\nExpires <t:{unix_timestamp}:R>")
-        channel_id = int(os.getenv("EVENT_CODES_CHANNEL") or 0)
-        await client.rest.create_message(channel_id, embed=embed)
-
-
 async def get_code_xp_amount(pool, event_code) -> int | None:
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
@@ -193,3 +125,83 @@ async def purge_expired_events(pool: AsyncConnectionPool):
                 """,
                 (int(datetime.now().timestamp()),),
             )
+
+
+event = lightbulb.Group("event", "commands related to events")
+
+
+@event.register
+class Create(
+    lightbulb.SlashCommand,
+    name="create",
+    description="creates a code for an event",
+):
+    end_time = lightbulb.string(
+        "end_time",
+        "format as DD/MM/YYYY HH:MM, e.g. 01/01/2000 17:30",
+    )
+    xp_amount = lightbulb.integer(
+        "xp_amount",
+        "how much XP the code gives",
+        choices=[lightbulb.Choice(f"{amount} XP", amount) for amount in range(250, 1001, 250)],
+    )
+
+    @lightbulb.invoke
+    async def invoke(
+        self, ctx: lightbulb.Context, pool: AsyncConnectionPool, client: lightbulb.Client
+    ) -> None:
+        await ctx.defer(ephemeral=True)
+
+        tz = ZoneInfo("Australia/Sydney")
+        try:
+            event_end_date = datetime.strptime(
+                self.end_time,
+                "%d/%m/%Y %H:%M",
+            ).replace(tzinfo=tz)
+        except ValueError:
+            await ctx.respond(
+                f"Invalid `end_time` ({self.end_time}).\nGive time in DD/MM/YYYY HH:MM format."
+            )
+            return
+        if event_end_date < datetime.now(tz):
+            await ctx.respond(f"Provided `end_time` of ({event_end_date}) is in the past.")
+            return
+        unix_timestamp = int(event_end_date.timestamp())
+
+        # Try to generate a code
+        for _ in range(3):
+            code = generate_code()
+            async with pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        """
+                        SELECT 1
+                        FROM events
+                        WHERE event_code = %s
+                        """,
+                        (code,),
+                    )
+                    if not await cur.fetchone():
+                        break
+        else:  # 3 tries to generate a unique code, if failed then error
+            await ctx.respond(
+                "Could not generate a unique code. Please purge the database of old codes."
+            )
+            return
+
+        async with pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    """
+                    INSERT INTO events (event_code, expiry_date, xp_amount)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (code, unix_timestamp, self.xp_amount),
+                )
+
+        embed = hikari.Embed(description=f"Code: `{code}`\nExpires <t:{unix_timestamp}:R>")
+        channel_id = int(os.getenv("EVENT_CODES_CHANNEL") or 0)
+        await client.rest.create_message(channel_id, embed=embed)
+
+
+loader.command(event)
