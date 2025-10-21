@@ -35,7 +35,7 @@ async def on_message(event: hikari.GuildMessageCreateEvent, pool: AsyncConnectio
         )
 
 
-profile = lightbulb.Group("profile", "commands related to user profiles")
+profile = lightbulb.Group("profile", "commands related to profiles")
 
 translations = {
     "en": {
@@ -63,7 +63,7 @@ translations = {
 class View(
     lightbulb.SlashCommand,
     name="view",
-    description="view user profile details",
+    description="view a user's profile (defaults to your own)",
 ):
     lang = lightbulb.string(
         "language",
@@ -119,15 +119,21 @@ class View(
 class Set(
     lightbulb.SlashCommand,
     name="set",
-    description="set user profile details",
+    description="set profile details",
 ):
     quote = lightbulb.string("quote", "quote to be displayed (max 100 characters)", default=None)
 
     mal_profile = lightbulb.string("mal", "username (not link) for your MAL profile", default=None)
-    anilist_profile = lightbulb.string("anilist", "username (not link) for your AniList profile", default=None)
+    anilist_profile = lightbulb.string(
+        "anilist", "username (not link) for your AniList profile", default=None
+    )
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
+        if self.quote is None and self.mal_profile is None and self.anilist_profile is None:
+            await ctx.respond("You didn't tell me any changes to make!", ephemeral=True)
+            return
+
         await ctx.defer(ephemeral=True)
         user = ctx.user
         profile = await get_profile(pool, user)
@@ -139,7 +145,7 @@ class Set(
                 )
                 return
             elif profile.quote == self.quote:
-                await ctx.respond("Quote same as previous quote.", ephemeral=True)
+                await ctx.respond("This is your previous quote.", ephemeral=True)
                 return
             await profile.set_quote(pool, self.quote)
 
@@ -155,10 +161,12 @@ class Set(
 
 
 @profile.register
-class Remove(lightbulb.SlashCommand, name="remove", description="remove certain fields of your profile"):
+class Remove(
+    lightbulb.SlashCommand, name="remove", description="remove a given field from your profile"
+):
     profile_field = lightbulb.string(
         "field",
-        "field of profile you want to remove",
+        "the field you want to remove",
         choices=[
             lightbulb.Choice("MAL", "mal_profile"),
             lightbulb.Choice("AniList", "anilist_profile"),

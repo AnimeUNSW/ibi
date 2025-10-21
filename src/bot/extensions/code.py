@@ -12,7 +12,7 @@ from psycopg_pool import AsyncConnectionPool
 from bot.extensions.profile_utils.db import get_profile
 
 loader = lightbulb.Loader()
-code = lightbulb.Group("code", "commands related to code")
+code = lightbulb.Group("code", "commands related to event codes")
 
 
 def generate_code() -> str:
@@ -25,11 +25,11 @@ def generate_code() -> str:
 class Create(
     lightbulb.SlashCommand,
     name="create",
-    description="creates an event",
+    description="creates a code for an event",
 ):
     end_time = lightbulb.string(
         "end_time",
-        "the date when the event will end format it in DD/MM/YYYY HH:MM e.g. 01/01/2000 17:30",
+        "format as DD/MM/YYYY HH:MM, e.g. 01/01/2000 17:30",
     )
     xp_amount = lightbulb.integer(
         "xp_amount",
@@ -38,7 +38,9 @@ class Create(
     )
 
     @lightbulb.invoke
-    async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool, client: hikari.api.RESTClient) -> None:
+    async def invoke(
+        self, ctx: lightbulb.Context, pool: AsyncConnectionPool, client: hikari.api.RESTClient
+    ) -> None:
         await ctx.defer(ephemeral=True)
 
         tz = ZoneInfo("Australia/Sydney")
@@ -48,7 +50,9 @@ class Create(
                 "%d/%m/%Y %H:%M",
             ).replace(tzinfo=tz)
         except ValueError:
-            await ctx.respond(f"Invalid `end_time` ({self.end_time}).\nGive time in DD/MM/YYYY HH:MM format.")
+            await ctx.respond(
+                f"Invalid `end_time` ({self.end_time}).\nGive time in DD/MM/YYYY HH:MM format."
+            )
             return
         if event_end_date < datetime.now(tz):
             await ctx.respond(f"Provided `end_time` of ({event_end_date}) is in the past.")
@@ -71,7 +75,9 @@ class Create(
                     if not await cur.fetchone():
                         break
         else:  # 3 tries to generate a unique code, if failed then error
-            await ctx.respond("Could not generate a unique code. Please purge the database of old codes.")
+            await ctx.respond(
+                "Could not generate a unique code. Please purge the database of old codes."
+            )
             return
 
         async with pool.connection() as conn:
@@ -141,10 +147,10 @@ async def try_redeem_code(pool, user_id, code):
 
 
 @code.register
-class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event code to get extra EXP!"):
+class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event code to get XP!"):
     code = lightbulb.string(
         "code",
-        "code given to you at the event",
+        "the code given to you at the event",
     )
 
     @lightbulb.invoke
