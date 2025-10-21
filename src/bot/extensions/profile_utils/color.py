@@ -66,7 +66,6 @@ def get_dominant_color(url: hikari.URL) -> RGB | None:
         for pixel in pixels:
             d = math.dist(fg_rgb_to_yuv[color], rgb_to_yuv(pixel))
             if d < threshold:
-                print(d)
                 score += math.exp(-k * d * d)
                 num_similar += 1
         if num_similar < 30:

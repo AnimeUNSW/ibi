@@ -38,9 +38,7 @@ class Create(
     )
 
     @lightbulb.invoke
-    async def invoke(
-        self, ctx: lightbulb.Context, pool: AsyncConnectionPool, client: hikari.api.RESTClient
-    ) -> None:
+    async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool, client: lightbulb.Client) -> None:
         await ctx.defer(ephemeral=True)
 
         tz = ZoneInfo("Australia/Sydney")
@@ -50,9 +48,7 @@ class Create(
                 "%d/%m/%Y %H:%M",
             ).replace(tzinfo=tz)
         except ValueError:
-            await ctx.respond(
-                f"Invalid `end_time` ({self.end_time}).\nGive time in DD/MM/YYYY HH:MM format."
-            )
+            await ctx.respond(f"Invalid `end_time` ({self.end_time}).\nGive time in DD/MM/YYYY HH:MM format.")
             return
         if event_end_date < datetime.now(tz):
             await ctx.respond(f"Provided `end_time` of ({event_end_date}) is in the past.")
@@ -75,9 +71,7 @@ class Create(
                     if not await cur.fetchone():
                         break
         else:  # 3 tries to generate a unique code, if failed then error
-            await ctx.respond(
-                "Could not generate a unique code. Please purge the database of old codes."
-            )
+            await ctx.respond("Could not generate a unique code. Please purge the database of old codes.")
             return
 
         async with pool.connection() as conn:
@@ -92,7 +86,7 @@ class Create(
 
         embed = hikari.Embed(description=f"Code: `{code}`\nExpires <t:{unix_timestamp}:R>")
         channel_id = int(os.getenv("EVENT_CODES_CHANNEL") or 0)
-        await client.create_message(channel_id, embed=embed)
+        await client.rest.create_message(channel_id, embed=embed)
 
 
 async def get_code_xp_amount(pool, event_code) -> int | None:
