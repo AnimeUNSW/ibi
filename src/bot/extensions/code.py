@@ -84,7 +84,7 @@ class Create(
                     (code, unix_timestamp, self.xp_amount),
                 )
 
-        embed = hikari.Embed(description=f"Code generated: `{code}`\nEvent ends <t:{unix_timestamp}:R>")
+        embed = hikari.Embed(description=f"Code: `{code}`\nExpires <t:{unix_timestamp}:R>")
         channel_id = int(os.getenv("EVENT_CODES_CHANNEL") or 0)
         await client.create_message(channel_id, embed=embed)
 
