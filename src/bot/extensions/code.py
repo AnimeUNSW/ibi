@@ -202,6 +202,7 @@ class Create(
         embed = hikari.Embed(description=f"Code: `{code}`\nExpires <t:{unix_timestamp}:R>")
         channel_id = int(os.getenv("EVENT_CODES_CHANNEL") or 0)
         await client.rest.create_message(channel_id, embed=embed)
+        await ctx.respond("Code generated successfully!")
 
 
 loader.command(event)
