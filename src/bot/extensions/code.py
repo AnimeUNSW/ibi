@@ -80,7 +80,9 @@ class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event 
     )
 
     @lightbulb.invoke
-    async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
+    async def invoke(
+        self, ctx: lightbulb.Context, pool: AsyncConnectionPool, client: lightbulb.Client
+    ) -> None:
         await ctx.defer(ephemeral=True)
         user = ctx.member
         if user is None:
@@ -103,9 +105,16 @@ class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event 
         if await try_redeem_code(pool, user_id=user.id, code=self.code):
             profile = await get_profile(pool, user)
             await profile.add_exp(pool, xp_amount)
+            new_profile = await get_profile(pool, user)
+            if profile.level != new_profile.level and profile.level > 0:
+                channel_id = int(os.getenv("XP_CHANNEL") or 0)
+                await client.rest.create_message(
+                    channel_id, f"🎉 {user.mention} leveled up to **Level {new_profile.level}**!"
+                )
             await ctx.respond(
                 f"Thank you {user.mention} for coming to our event! We hope to see you again soon!",
             )
+
         else:
             await ctx.respond("You have already redeemed this code!")
 
