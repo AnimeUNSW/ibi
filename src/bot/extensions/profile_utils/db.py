@@ -61,7 +61,7 @@ class Profile:
             upper *= 2
         while lower < upper:
             m = (lower + upper) // 2
-            if exp_for_level(m) < self.exp:
+            if exp_for_level(m) <= self.exp:
                 lower = m + 1
             else:
                 upper = m
