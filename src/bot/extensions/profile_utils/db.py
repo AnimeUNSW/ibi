@@ -1,3 +1,4 @@
+import math
 import random
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -10,7 +11,8 @@ from psycopg.rows import DictRow, dict_row
 from psycopg_pool import AsyncConnectionPool
 
 LEVEL_ONE_XP_REQ = 100
-PER_LEVEL_XP_INC = 50
+FIRST_XP_INC = 55
+XP_INC_DELTA = 10
 
 cooldowns: defaultdict[hikari.User, datetime] = defaultdict(lambda: datetime.min)
 # Cooldown for xp
@@ -21,10 +23,14 @@ def exp_for_level(level: int) -> int:
     """
     Formula for xp is (non-cumulative)
     0 -> 1: LEVEL_ONE_XP_REQ
-    1 -> 2: LEVEL_ONE_XP_REQ + PER_LEVEL_XP_INC
-    2 -> 3: LEVEL_ONE_XP_REQ + 2 * PER_LEVEL_XP_INC
+    1 -> 2: LEVEL_ONE_XP_REQ + FIRST_XP_INC
+    2 -> 3: LEVEL_ONE_XP_REQ + 2 * FIRST_XP_INC + XP_INC_DELTA
     """
-    return LEVEL_ONE_XP_REQ * level + PER_LEVEL_XP_INC * level * (level - 1) // 2
+    return (
+        LEVEL_ONE_XP_REQ * level
+        + FIRST_XP_INC * math.comb(level, 2)  #
+        + XP_INC_DELTA * math.comb(level, 3)
+    )
 
 
 def get_exp() -> int:
@@ -61,7 +67,11 @@ class Profile:
                 upper = m
         curr_level = lower - 1
         remaining_xp_til_next_level = self.exp - exp_for_level(curr_level)
-        xp_required_for_next_level = LEVEL_ONE_XP_REQ + curr_level * PER_LEVEL_XP_INC
+        xp_required_for_next_level = (
+            LEVEL_ONE_XP_REQ
+            + FIRST_XP_INC * curr_level  #
+            + XP_INC_DELTA * math.comb(curr_level, 2)
+        )
         return curr_level, remaining_xp_til_next_level, xp_required_for_next_level
 
     @property
