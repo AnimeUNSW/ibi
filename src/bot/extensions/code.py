@@ -9,7 +9,7 @@ import lightbulb
 from psycopg.errors import UniqueViolation
 from psycopg_pool import AsyncConnectionPool
 
-from bot.extensions.profile_utils.db import get_profile
+from bot.extensions.profiles import add_exp
 
 loader = lightbulb.Loader()
 code = lightbulb.Group("code", "commands related to event codes")
@@ -80,9 +80,7 @@ class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event 
     )
 
     @lightbulb.invoke
-    async def invoke(
-        self, ctx: lightbulb.Context, pool: AsyncConnectionPool, client: lightbulb.Client
-    ) -> None:
+    async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool, client: lightbulb.Client) -> None:
         await ctx.defer(ephemeral=True)
         user = ctx.member
         if user is None:
@@ -103,14 +101,7 @@ class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event 
 
         # check that the player has not already submited the code
         if await try_redeem_code(pool, user_id=user.id, code=self.code):
-            profile = await get_profile(pool, user)
-            await profile.add_exp(pool, xp_amount)
-            new_profile = await get_profile(pool, user)
-            if profile.level != new_profile.level and profile.level > 0:
-                channel_id = int(os.getenv("XP_CHANNEL") or 0)
-                await client.rest.create_message(
-                    channel_id, f"🎉 {user.mention} leveled up to **Level {new_profile.level}**!"
-                )
+            await add_exp(client.rest, pool, user, xp_amount)
             await ctx.respond(
                 f"Thank you {user.mention} for coming to our event! We hope to see you again soon!",
             )
@@ -157,7 +148,10 @@ class Create(
 
     @lightbulb.invoke
     async def invoke(
-        self, ctx: lightbulb.Context, pool: AsyncConnectionPool, client: lightbulb.Client
+        self,
+        ctx: lightbulb.Context,
+        pool: AsyncConnectionPool,
+        client: lightbulb.Client,
     ) -> None:
         await ctx.defer(ephemeral=True)
 
@@ -168,9 +162,7 @@ class Create(
                 "%d/%m/%Y %H:%M",
             ).replace(tzinfo=tz)
         except ValueError:
-            await ctx.respond(
-                f"Invalid `end_time` ({self.end_time}).\nGive time in DD/MM/YYYY HH:MM format."
-            )
+            await ctx.respond(f"Invalid `end_time` ({self.end_time}).\nGive time in DD/MM/YYYY HH:MM format.")
             return
         if event_end_date < datetime.now(tz):
             await ctx.respond(f"Provided `end_time` of ({event_end_date}) is in the past.")
@@ -193,9 +185,7 @@ class Create(
                     if not await cur.fetchone():
                         break
         else:  # 3 tries to generate a unique code, if failed then error
-            await ctx.respond(
-                "Could not generate a unique code. Please purge the database of old codes."
-            )
+            await ctx.respond("Could not generate a unique code. Please purge the database of old codes.")
             return
 
         async with pool.connection() as conn:
