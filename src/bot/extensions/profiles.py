@@ -13,6 +13,24 @@ from .profile_utils.db import cooldown, cooldowns, get_exp, get_profile
 loader = lightbulb.Loader()
 
 
+async def add_exp(
+    client: hikari.api.RESTClient,
+    pool: AsyncConnectionPool,
+    user: hikari.User,
+    xp: int,
+):
+    profile = await get_profile(pool, user)
+    await profile.add_exp(pool, xp)
+    new_profile = await get_profile(pool, user)
+    if profile.level != new_profile.level and profile.level > 0:
+        channel_id = int(os.getenv("XP_CHANNEL") or 0)
+        for level in range(profile.level + 1, new_profile.level + 1):
+            await client.create_message(
+                channel_id,
+                f"🎉 {user.mention} leveled up to **Level {level}**!",
+            )
+
+
 @loader.listener(hikari.GuildMessageCreateEvent)
 async def on_message(event: hikari.GuildMessageCreateEvent, pool: AsyncConnectionPool) -> None:
     user = event.author
@@ -24,15 +42,7 @@ async def on_message(event: hikari.GuildMessageCreateEvent, pool: AsyncConnectio
     if time_since_last_xp < cooldown:
         return
     cooldowns[user] = current_time
-
-    profile = await get_profile(pool, user)
-    await profile.add_exp(pool, get_exp())
-    new_profile = await get_profile(pool, user)
-    if profile.level != new_profile.level and profile.level > 0:
-        channel_id = int(os.getenv("XP_CHANNEL") or 0)
-        await event.app.rest.create_message(
-            channel_id, f"🎉 {user.mention} leveled up to **Level {new_profile.level}**!"
-        )
+    await add_exp(event.app.rest, pool, user, get_exp())
 
 
 profile = lightbulb.Group("profile", "commands related to profiles")
@@ -125,9 +135,7 @@ class Set(
     quote = lightbulb.string("quote", "quote to be displayed (max 100 characters)", default=None)
 
     mal_profile = lightbulb.string("mal", "username (not link) for your MAL profile", default=None)
-    anilist_profile = lightbulb.string(
-        "anilist", "username (not link) for your AniList profile", default=None
-    )
+    anilist_profile = lightbulb.string("anilist", "username (not link) for your AniList profile", default=None)
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
@@ -162,9 +170,7 @@ class Set(
 
 
 @profile.register
-class Remove(
-    lightbulb.SlashCommand, name="remove", description="remove a given field from your profile"
-):
+class Remove(lightbulb.SlashCommand, name="remove", description="remove a given field from your profile"):
     profile_field = lightbulb.string(
         "field",
         "the field you want to remove",
