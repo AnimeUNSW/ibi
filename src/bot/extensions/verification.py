@@ -523,14 +523,14 @@ class Lookup(
         try:
             user_id = int(self.user_id)
         except ValueError:
-            await ctx.respond("User ID must be an integer", ephemeral=True)
+            await ctx.respond("User ID must be an integer!", ephemeral=True)
 
         async with pool.connection() as conn:
             async with conn.cursor(row_factory=dict_row) as cur:
                 await cur.execute("SELECT * FROM users WHERE id = %s", (self.user_id,))
                 user_info = await cur.fetchone()
         if user_info is None:
-            await ctx.respond("User is not in the new system. Check the old system with /verify log")
+            await ctx.respond("User is not in the new system! Check the old system with `/verify log`.")
             return
 
         try:
@@ -542,7 +542,7 @@ class Lookup(
             await ctx.respond("ID does not correspond to a valid discord user.")
             return
         except hikari.RateLimitTooLongError:
-            await ctx.respond("Rate limited.")
+            await ctx.respond("Rate limited, please try again after a small wait.")
             return
         except hikari.InternalServerError:
             await ctx.respond("Internal server error.")
