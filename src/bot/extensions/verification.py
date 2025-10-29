@@ -13,6 +13,7 @@ import lightbulb
 import miru
 import phonenumbers
 from mailersend import emails
+from psycopg.rows import dict_row
 from psycopg.sql import SQL, Identifier
 from psycopg_pool import AsyncConnectionPool
 
@@ -64,15 +65,13 @@ class UserInfo:
             try:
                 email_info = email_validator.validate_email(self.email, check_deliverability=False)
                 self.email = email_info.normalized
-            except Exception as e:
-                print(self.email + str(e))
+            except email_validator.EmailNotValidError:
                 return t["validation"]["email"]
         if self.phone is not None:
             try:
-                x = phonenumbers.parse(self.phone, "AU")
-                self.phone = phonenumbers.format_number(x, phonenumbers.PhoneNumberFormat.E164)
-            except Exception as e:
-                print(self.phone + str(e))
+                phone_num = phonenumbers.parse(self.phone, "AU")
+                self.phone = phonenumbers.format_number(phone_num, phonenumbers.PhoneNumberFormat.E164)
+            except phonenumbers.NumberParseException:
                 return t["validation"]["phone"]
 
         return None
@@ -225,6 +224,8 @@ def verification_message_components(lang: SupportedLanguage):
 
 
 public_ip = urlopen("https://ident.me").read().decode("utf8")
+# For testing env
+# public_ip = 'localhost'
 
 
 async def send_verification_email(user_info: UserInfo):
@@ -248,16 +249,21 @@ async def send_verification_email(user_info: UserInfo):
 
 loader = lightbulb.Loader()
 
-guild_id = int(os.getenv("GUILD_ID"))
-role_ids = list(map(lambda id: int(id), os.getenv("VERIFICATION_ROLE_IDS").split(",")))
-welcome_channel_id = int(os.getenv("WELCOME_CHANNEL"))
-introduction_channel_id = int(os.getenv("INTRODUCTION_CHANNEL"))
+guild_id = int(os.getenv("GUILD_ID", "0"))
+verification_role_ids = os.getenv("VERIFICATION_ROLE_IDS")
+role_ids = [*map(int, verification_role_ids)] if verification_role_ids else []
+welcome_channel_id = int(os.getenv("WELCOME_CHANNEL", "0"))
+introduction_channel_id = int(os.getenv("INTRODUCTION_CHANNEL", "0"))
 
 
 async def verify_user(user_id: hikari.Snowflakeish, rest: hikari.api.RESTClient, lang: SupportedLanguage = "en"):
     member = await rest.fetch_member(guild_id, user_id)
     for role_id in role_ids:
         await member.add_role(role_id, reason="verification")
+
+    # For testing, since no roles in testing
+    if not role_ids:
+        return
 
     # If user does not already have the member role
     if role_ids[0] not in member.role_ids:
@@ -470,7 +476,7 @@ class Log(
     lightbulb.SlashCommand,
     name="log",
     description="get verification logs as csvs",
-    hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.ADMINISTRATOR)],
+    hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.MODERATE_MEMBERS)],
 ):
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
@@ -500,6 +506,61 @@ async def get_csv(pool: AsyncConnectionPool, table_name: str) -> StringIO:
                 writer.writerow(row)
     buffer.seek(0)
     return buffer
+
+
+@verify.register
+class Lookup(
+    lightbulb.SlashCommand,
+    name="lookup",
+    description="lookup a user from id",
+    hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.MODERATE_MEMBERS)],
+):
+    # Can't be int, blame js
+    user_id = lightbulb.string("id", "the id of the user to lookup")
+
+    @lightbulb.invoke
+    async def invoke(self, ctx: lightbulb.Context, client: lightbulb.Client, pool: AsyncConnectionPool) -> None:
+        try:
+            user_id = int(self.user_id)
+        except ValueError:
+            await ctx.respond("User ID must be an integer!", ephemeral=True)
+
+        async with pool.connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute("SELECT * FROM users WHERE id = %s", (self.user_id,))
+                user_info = await cur.fetchone()
+        if user_info is None:
+            await ctx.respond("User is not in the new system! Check the old system with `/verify log`.")
+            return
+
+        try:
+            user = await client.rest.fetch_user(user_id)
+        except hikari.UnauthorizedError:
+            await ctx.respond("Unauthorized to make a request.")
+            return
+        except hikari.NotFoundError:
+            await ctx.respond("ID does not correspond to a valid discord user.")
+            return
+        except hikari.RateLimitTooLongError:
+            await ctx.respond("Rate limited, please try again after a small wait.")
+            return
+        except hikari.InternalServerError:
+            await ctx.respond("Internal server error.")
+            return
+
+        embed = hikari.Embed(
+            title=f"{user.username}",
+            description=f"{user.mention}",
+        ).set_thumbnail(user.display_avatar_url)
+        embed.add_field("First Name", user_info["first_name"])
+        embed.add_field("Last Name", user_info["last_name"])
+        if user_info["zid"] is not None:
+            embed.add_field("zid", user_info["zid"])
+        if user_info["email"] is not None:
+            embed.add_field("Email", user_info["email"])
+        if user_info["phone_number"] is not None:
+            embed.add_field("Phone Number", user_info["phone_number"])
+        await ctx.respond(embed=embed)
 
 
 loader.command(verify)
