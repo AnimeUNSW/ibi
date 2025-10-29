@@ -27,9 +27,7 @@ html_template = """
 @app.get("/verify/{token}", response_class=HTMLResponse)
 async def verify(token: str):
     try:
-        user_info = UserInfo.from_dict(
-            jwt.decode(token, os.getenv("JWT_TOKEN"), algorithms=["HS256"])
-        )
+        user_info = UserInfo.from_dict(jwt.decode(token, os.getenv("JWT_TOKEN"), algorithms=["HS256"]))
         err = user_info.validate()
         if err is not None:
             raise Exception(f"Malformed user_info: {err}")
@@ -49,7 +47,7 @@ async def run_server(local_client: Client, global_db: AsyncConnectionPool):
     global owner
     client = local_client
     db = global_db
-    owner = "@" + (await client.rest.fetch_user(int(os.getenv("OWNER_ID")))).username
+    owner = "@" + (await client.rest.fetch_user(int(os.getenv("OWNER_ID", "0")))).username
     config = uvicorn.Config(app, host="0.0.0.0", port=8000)
     server = uvicorn.Server(config)
     asyncio.create_task(server.serve())
