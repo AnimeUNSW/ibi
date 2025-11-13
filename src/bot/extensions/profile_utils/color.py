@@ -28,6 +28,14 @@ fg_to_bg = {
 
 
 def rgb_to_yuv(color: RGB) -> tuple[float, float, float]:
+    """YUV is better for color similarity checking
+
+    Args:
+        color: RGB tuple
+
+    Returns:
+        YUV tuple
+    """
     r, g, b = color
     return (
         0.299 * r + 0.587 * g + 0.114 * b,
@@ -40,6 +48,18 @@ fg_rgb_to_yuv = {color: rgb_to_yuv(color) for color in fg_to_bg}
 
 
 def get_dominant_color(url: hikari.URL) -> RGB | None:
+    """Given a URL for some image, find the dominant color in the image
+    The algorithm for finding the dominant color is basically
+    1. Resize the image into 16 x 16
+    2. For each color in our palette, calculate similarity based on the below function
+    3. Get the color with the highest similarity score, or return black if none are similar
+
+    Args:
+        url: hikari.URL for the image
+
+    Returns:
+        A dominant color in RGB, or None if there was an error with accessing the image
+    """
     try:
         res = requests.get(url.url, timeout=10)
         res.raise_for_status()
@@ -58,6 +78,18 @@ def get_dominant_color(url: hikari.URL) -> RGB | None:
     pixels = [*img.getdata()]
 
     def similarity(color: RGB) -> float:
+        """Similarity score for a given color
+        For each pixel, we compare YUV distances with the palette color, scaled by an exponential
+        map so closer values get higher scores, with a cutoff after a threshold (60) where the pixel
+        gets a score of 0. We sum up the scores for each pixel, and return -inf if the score is < 30 and
+        the score otherwise.
+
+        Args:
+            color: Palette color
+
+        Returns:
+            Similarity score
+        """
         k = 0.03
         threshold = 60
 

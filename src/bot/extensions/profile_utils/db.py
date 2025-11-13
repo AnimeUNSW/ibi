@@ -56,6 +56,8 @@ class Profile:
         """
         if self.exp <= 0:
             return 0, self.exp, LEVEL_ONE_XP_REQ
+
+        # Binary search for current level
         lower, upper = 0, 1
         while self.exp >= exp_for_level(upper):
             upper *= 2
@@ -65,8 +67,10 @@ class Profile:
                 lower = m + 1
             else:
                 upper = m
+
         curr_level = lower - 1
         remaining_xp_til_next_level = self.exp - exp_for_level(curr_level)
+        # Calculate xp required from level
         xp_required_for_next_level = (
             LEVEL_ONE_XP_REQ
             + FIRST_XP_INC * curr_level  #
@@ -231,4 +235,3 @@ async def insert_default_profile(conn: AsyncConnection, user_id: int) -> None:
         """,
         (user_id, 0, "", "Hello!", None, None),
     )
-    await conn.commit()

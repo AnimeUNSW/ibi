@@ -16,6 +16,13 @@ class Reset(
     description="reset fields in a user's profile",
     hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.MODERATE_MEMBERS)],
 ):
+    """Reset command for mods to reset a user's profile
+
+    Attributes:
+        user: The user to reset
+        field: Which field to reset (takes "all" to reset everything)
+    """
+
     user = lightbulb.user("user", "the user")
     field = lightbulb.string(
         "field",

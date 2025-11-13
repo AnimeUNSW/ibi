@@ -16,12 +16,26 @@ code = lightbulb.Group("code", "commands related to event codes")
 
 
 def generate_code() -> str:
+    """Generate a code for events
+
+    Returns:
+        Event code
+    """
     length = 4
     random_string = "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
     return random_string
 
 
-async def get_code_xp_amount(pool, event_code) -> int | None:
+async def get_code_xp_amount(pool: AsyncConnectionPool, event_code: str) -> int | None:
+    """Get how much xp an event code gives
+
+    Args:
+        pool: AsyncConnectionPool
+        event_code: The event code
+
+    Returns:
+        The amount of xp the code gives, or None if it doesn't exist
+    """
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
@@ -38,7 +52,17 @@ async def get_code_xp_amount(pool, event_code) -> int | None:
             return res[0] if res else None
 
 
-async def code_not_expired(pool, code, date):
+async def code_not_expired(pool: AsyncConnectionPool, event_code: str, date: int):
+    """Check that the code is not expired
+
+    Args:
+        pool: AsyncConnectionPool
+        event_code: Event code
+        date: Unix timestamp as an int (get it from datetime.now().timestamp())
+
+    Returns:
+        [TODO:return]
+    """
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             await cur.execute(
@@ -47,7 +71,7 @@ async def code_not_expired(pool, code, date):
                 from events
                 where event_code = %s and expiry_date > %s
                 """,
-                (code, date),
+                (event_code, date),
             )
 
             res = await cur.fetchone()
@@ -55,7 +79,17 @@ async def code_not_expired(pool, code, date):
             return bool(res)
 
 
-async def try_redeem_code(pool, user_id, code):
+async def try_redeem_code(pool: AsyncConnectionPool, user_id: int, event_code: str):
+    """Try to redeem the code for the given user
+
+    Args:
+        pool: AsyncConnectionPool
+        user_id: ID of the user, hikari.user.id
+        event_code: The event code
+
+    Returns:
+       Whether the code was already redeemed
+    """
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
             try:
@@ -64,9 +98,8 @@ async def try_redeem_code(pool, user_id, code):
                     INSERT INTO event_participants (event_code, user_id)
                     VALUES (%s, %s)
                     """,
-                    (code, user_id),
+                    (event_code, user_id),
                 )
-                conn.commit()
                 return True
             except UniqueViolation:
                 return False
@@ -100,7 +133,7 @@ class Redeem(lightbulb.SlashCommand, name="redeem", description="enter an event 
             return
 
         # check that the player has not already submited the code
-        if await try_redeem_code(pool, user_id=user.id, code=self.code):
+        if await try_redeem_code(pool, user_id=user.id, event_code=self.code):
             await add_exp(client.rest, pool, user, xp_amount)
             await ctx.respond(
                 f"Thank you {user.mention} for coming to our event! We hope to see you again soon!",
@@ -115,9 +148,14 @@ loader.command(code)
 
 @loader.task(lightbulb.uniformtrigger(hours=24))
 async def purge_expired_events(pool: AsyncConnectionPool):
+    """Task to periodically clear expired events from the DB
+
+    Args:
+        pool: AsyncConnectionPool
+    """
     async with pool.connection() as conn:
         async with conn.cursor() as cur:
-            # DELETE ON CASCADE is on for event_participants so it handles that automatically
+            # DELETE ON CASCADE is on for event_participants so no need to delete from there
             await cur.execute(
                 """
                 DELETE FROM events

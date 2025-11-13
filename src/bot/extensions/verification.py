@@ -100,7 +100,7 @@ class UserInfo:
         )
 
 
-translations: dict[SupportedLanguage, D[str]] = {
+translations: dict[SupportedLanguage, dict[str, dict[str, str]]] = {
     "en": {
         "choice": {
             "unsw": "Verify (UNSW)",
@@ -127,9 +127,10 @@ translations: dict[SupportedLanguage, D[str]] = {
             "email": "Please enter a valid email. (e.g. ibi@animeunsw.net)",
             "phone": "Please enter a valid phone number (e.g. 0412345678 or +61412345678)",
         },
-        "confirmed": "Thanks for verifying, {user_info.first_name}! "
-        "Please check your email, {user_info.email}, for the next step.",
-        "welcome_message": "Welcome {user}! Feel free to leave an introduction in {introduction_channel}.",
+        "misc": {
+            "confirmed": "Thanks for verifying, {user_info.first_name}! Please check your email, {user_info.email}, for the next step.",
+            "welcome_message": "Welcome {user}! Feel free to leave an introduction in {introduction_channel}.",
+        },
         "endpoint": {
             "success": "Successfully verified!",
             "fail": "Verification was not successful, please contact {owner} on Discord for support.",
@@ -138,10 +139,8 @@ translations: dict[SupportedLanguage, D[str]] = {
             "initial": "Welcome to AUNSW! If you can see this then you're unverified, but don't worry; it's a simple process to get you verified.",
             "steps1": '1. Accept the rules by clicking the "Complete" button at the bottom of the screen and following the instructions.\n2. Depending on whether you\'re a UNSW student or not, fill out the corresponding form by pressing on one of buttons below.\n3. If you filling out the UNSW form, you will receive a message in your student email, else if you filled out the Non-UNSW form, it will be sent to the email you provided.\n4. Click on the button in the email labeled "Verify," as shown below.',
             "steps2": "5. Profit!",
-            "buttons": {
-                "unsw": "Verify (UNSW)",
-                "non-unsw": "Verify (Non-UNSW)",
-            },
+            "buttons-unsw": "Verify (UNSW)",
+            "buttons-non-unsw": "Verify (Non-UNSW)",
         },
     },
     "cn": {
@@ -170,8 +169,10 @@ translations: dict[SupportedLanguage, D[str]] = {
             "email": "请输入有效的电子邮件（例如 lbi@animeunsw.net）",
             "phone": "请输入有效的电话号码（例如 0412345678 或 +61412345678）",
         },
-        "confirmed": "感谢您的验证，{user_info.first_name}！请检查您的电子邮件，{user_info.email}，以获取下一步指示。",
-        "welcome_message": "欢迎 {user}！欢迎在 {introduction_channel} 留下自我介绍。",
+        "misc": {
+            "confirmed": "感谢您的验证，{user_info.first_name}！请检查您的电子邮件，{user_info.email}，以获取下一步指示。",
+            "welcome_message": "欢迎 {user}！欢迎在 {introduction_channel} 留下自我介绍。",
+        },
         "endpoint": {
             "success": "验证成功！",
             "fail": "验证未成功，请在Discord上联系{owner}寻求帮助。",
@@ -180,10 +181,8 @@ translations: dict[SupportedLanguage, D[str]] = {
             "initial": "欢迎来到UNSW！如果您看到此消息，则表示您尚未通过验证，但请别担心；验证过程很简单。",
             "steps1": "1. 点击屏幕下方的 “完成 ”按钮，按照说明接受规则。\n2. 根据您是否是UNSW学生，通过点击以下按钮之一填写相应的表格。\n3. 如果您填写的是UNSW表格，您将在您的学生邮箱中收到一条消息；如果您填写的是非UNSW表格，则会发送到您提供的电子邮件地址。\n4. 点击电子邮件中标有“验证”的按钮，如下图所示。",
             "steps2": "5. 搞定！",
-            "buttons": {
-                "unsw": "验证 (UNSW)",
-                "non-unsw": "验证 (非UNSW)",
-            },
+            "buttons-unsw": "验证 (UNSW)",
+            "buttons-non-unsw": "验证 (非UNSW)",
         },
     },
 }
@@ -209,13 +208,13 @@ def verification_message_components(lang: SupportedLanguage):
         hikari.impl.MessageActionRowBuilder(
             components=[
                 hikari.impl.InteractiveButtonBuilder(
-                    style=hikari.components.ButtonStyle.PRIMARY,
-                    label=t["buttons"]["unsw"],
+                    style=hikari.ButtonStyle.PRIMARY,
+                    label=t["buttons-unsw"],
                     custom_id=f"verify:button:{lang}:unsw",
                 ),
                 hikari.impl.InteractiveButtonBuilder(
-                    style=hikari.components.ButtonStyle.SECONDARY,
-                    label=t["buttons"]["non-unsw"],
+                    style=hikari.ButtonStyle.SECONDARY,
+                    label=t["buttons-non-unsw"],
                     custom_id=f"verify:button:{lang}:non-unsw",
                 ),
             ]
@@ -269,7 +268,7 @@ async def verify_user(user_id: hikari.Snowflakeish, rest: hikari.api.RESTClient,
     if role_ids[0] not in member.role_ids:
         await rest.create_message(
             welcome_channel_id,
-            content=translations[lang]["welcome_message"].format(
+            content=translations[lang]["misc"]["welcome_message"].format(
                 user="<@" + str(user_id) + ">",
                 introduction_channel="<#" + str(introduction_channel_id) + ">",
             ),
@@ -342,6 +341,10 @@ class Message(
 
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, client: lightbulb.Client) -> None:
+        # Assertion for type checking purposes, will be optimized away if ran with -O
+        # We know this is true because we restrict the options
+        assert self.lang in ("en", "cn")
+
         await client.rest.create_message(ctx.channel_id, components=verification_message_components(self.lang))
         await ctx.respond(
             "The verification message has been sent in the current channel!",
@@ -444,6 +447,15 @@ class VerifyModal(miru.Modal):
             self.add_item(self.phone)
 
     async def callback(self, ctx: miru.ModalContext) -> None:
+        # Assertions for type checking purposes
+        # We know these are true because they're required fields
+        assert self.lang in ("en", "cn")
+        assert self.first_name.value is not None
+        assert self.last_name.value is not None
+        assert self.zid.value is not None
+        assert self.email.value is not None
+        assert self.phone.value is not None
+
         await ctx.defer(flags=hikari.MessageFlag.EPHEMERAL)
         if self.is_unsw:
             user_info = UserInfo(self.lang, self.first_name.value, self.last_name.value, zid=self.zid.value)
@@ -457,7 +469,7 @@ class VerifyModal(miru.Modal):
             )
         err = user_info.validate()
         if err is not None:
-            await ctx.respond(err, flags=hikari.messages.MessageFlag.EPHEMERAL)
+            await ctx.respond(err, flags=hikari.MessageFlag.EPHEMERAL)
             return
 
         user_info.id = ctx.user.id
@@ -466,8 +478,8 @@ class VerifyModal(miru.Modal):
 
         await send_verification_email(user_info)
         await ctx.respond(
-            self.t["confirmed"].format(user_info=user_info),
-            flags=hikari.messages.MessageFlag.EPHEMERAL,
+            self.t["misc"]["confirmed"].format(user_info=user_info),
+            flags=hikari.MessageFlag.EPHEMERAL,
         )
 
 
