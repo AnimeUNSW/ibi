@@ -19,6 +19,14 @@ async def add_exp(
     user: hikari.User,
     xp: int,
 ):
+    """Update the exp for a user in the db
+
+    Args:
+        client: hikari RESTClient
+        pool: AsyncConnectionPool
+        user: The hikari.User object of the user
+        xp: Amount of xp to add
+    """
     profile = await get_profile(pool, user)
     await profile.add_exp(pool, xp)
     new_profile = await get_profile(pool, user)
@@ -33,6 +41,12 @@ async def add_exp(
 
 @loader.listener(hikari.GuildMessageCreateEvent)
 async def on_message(event: hikari.GuildMessageCreateEvent, pool: AsyncConnectionPool) -> None:
+    """Message hook to add exp for messages
+
+    Args:
+        event: Message event
+        pool: AsyncConnectionPool
+    """
     user = event.author
     if user.is_bot:
         return
@@ -92,33 +106,39 @@ class View(
         # fields = translations[self.lang]["fields"]
         fields = translations["en"]["fields"]
 
+        # Compute the user's xp and colors
         level, xp_remainder, xp_total = profile.get_level_info()
         fg_color, bg_color = get_colors(user.display_avatar_url)
 
+        # Create the xp progress bar
         xp_img = make_progress_bar(xp_remainder, xp_total, fg_color, bg_color)
         buffer = BytesIO()
         xp_img.save(buffer, format="PNG")
         buffer.seek(0)
         xp_bytes = hikari.Bytes(buffer, "xp.png")
 
+        # Create the embed
         embed = hikari.Embed(
             title=f"{user.display_name}{fields['title']}",
             description=str(profile.quote),
             color=fg_color,
         ).set_thumbnail(user.display_avatar_url)
 
+        # Add mal profile info to embed
         if profile.mal_profile is not None:
             embed.add_field(
                 name=str(fields["mal_profile"]),
                 value=f"[{profile.mal_profile}]({profile.mal_url})",
             )
 
+        # Add anilist profile info to embed
         if profile.anilist_profile is not None:
             embed.add_field(
                 name=str(fields["anilist_profile"]),
                 value=f"[{profile.anilist_profile}]({profile.anilist_url})",
             )
 
+        # Add xp info to embed
         embed.add_field(name=str(fields["rank"]), value="#" + str(profile.rank))
         embed.add_field(name=str(fields["level"]), value=f"{level} | {xp_remainder}/{xp_total} XP")
         embed.set_image(xp_bytes)
@@ -147,6 +167,7 @@ class Set(
         user = ctx.user
         profile = await get_profile(pool, user)
         if self.quote is not None:
+            # Check if quote is valid
             if len(self.quote) > 100:
                 await ctx.respond(
                     f"Max quote length is 100 characters, provided quote is {len(self.quote)} characters.",
