@@ -235,7 +235,7 @@ async def insert_default_profile(conn: AsyncConnection, user_id: int) -> None:
 
 # Get all time XP leaderboard
 async def get_all_time(pool: AsyncConnectionPool, term_leaderboard: bool) -> list[dict_row]:
-    if term_leaderboard == True:
+    if term_leaderboard:
         exp_type = "term_exp"
     else:
         exp_type = "exp"

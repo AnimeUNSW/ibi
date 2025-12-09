@@ -11,7 +11,7 @@ leaderboard = lightbulb.Group("leaderboard", "commands related to XP leaderboard
 async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, term_leaderboard: bool):
     response = await get_all_time(pool, term_leaderboard)
 
-    if term_leaderboard == True:
+    if term_leaderboard:
         title_string = "Term"
         desc_string = "term"
         embed_string = "term_exp"
