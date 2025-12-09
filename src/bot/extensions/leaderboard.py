@@ -2,7 +2,7 @@ import hikari
 import lightbulb
 from psycopg_pool import AsyncConnectionPool
 
-from .profile_utils.db import get_all_time#, reset_term
+from .profile_utils.db import get_all_time, reset_term
 
 loader = lightbulb.Loader()
 
@@ -84,24 +84,24 @@ class Term(
 # command 3:
 # /leaderboard reset term
 # reset the term xp value for everyone to 0 - only admins can run it, maybe not able to put it into the leaderboard command group due to permissions, read hikari docs
-# @leaderboard.register
-# class Reset(
-#     lightbulb.SlashCommand,
-#     name = "reset",
-#     description = "reset the term-by-term XP",
-#     hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.ADMINISTRATOR)],
-# ):
-#     @lightbulb.invoke
-#     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
-#         await ctx.defer()
+@leaderboard.register
+class Reset(
+    lightbulb.SlashCommand,
+    name = "reset",
+    description = "reset the term-by-term XP",
+    hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.ADMINISTRATOR)],
+):
+    @lightbulb.invoke
+    async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
+        await ctx.defer()
 
-#         reset_term(pool)
+        await reset_term(pool)
 
-#     embed = hikari.Embed(
-#         title="Reset XP Leaderboard",
-#         description="Term-by-term XP leaderboard successfully reset!",
-#     )
+        embed = hikari.Embed(
+            title="Reset XP Leaderboard",
+            description="Term-by-term XP leaderboard successfully reset!",
+        )
 
-#     await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed)
 
 loader.command(leaderboard)

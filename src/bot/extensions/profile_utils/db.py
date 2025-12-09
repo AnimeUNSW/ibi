@@ -253,13 +253,13 @@ async def get_all_time(pool: AsyncConnectionPool, term_leaderboard: bool) -> lis
             return response
 
 # Reset term XP
-# async def reset_term(pool: AsyncConnectionPool):
-#     print("reached reset")
-#     query = """
-#                 UPDATE profiles
-#                 SET term_exp = 0;
-#             """
-#     async with pool.connection() as conn:
-#         async with conn.cursor() as cur:
-#             await cur.execute(query)
-#             await conn.commit()
+async def reset_term(pool: AsyncConnectionPool):
+    print("reached reset")
+    query = """
+                UPDATE profiles
+                SET term_exp = 0;
+            """
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(query)
+            await conn.commit()
