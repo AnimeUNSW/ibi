@@ -2,7 +2,7 @@ import hikari
 import lightbulb
 from psycopg_pool import AsyncConnectionPool
 
-from .profile_utils.db import get_all_time, reset_term
+from .profile_utils.db import get_all_time, reset_term, get_exp_rank
 
 loader = lightbulb.Loader()
 
@@ -31,16 +31,36 @@ async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, ter
 
     embed = hikari.Embed(
         title=f"{title_string} XP Leaderboard",
-        description=f"Top 10 users by {desc_string} XP",
+        description=f"Top 10 users by {desc_string} exp",
         color=0xFFD700
     )
 
     for entry in response:
         embed.add_field(
             name=f"{entry['rank']} - {entry['username']}",
-            value=f"**{entry[f'{embed_string}']} XP**",
+            value=f"**{entry[f'{embed_string}']} exp**",
             inline=False,
         )
+
+    # need to add a field for the users own xp for that period (all time or term) and their rank
+    user = ctx.member
+    if user is None:
+        await ctx.respond("Invalid user.")
+        return
+    
+    user_id = user.id
+
+    user_data = await get_exp_rank(pool, user_id, term_leaderboard)
+
+    user_rank, user_exp = user_data[0]
+    user_temp = await ctx.client.rest.fetch_user(user_id)
+    user_name = user_temp.username
+
+    embed.add_field(
+        name="\n**You:**",
+        value=f"{user_rank} - {user_name}\n{user_exp} exp",
+        inline=False,
+    )
 
     return embed
 

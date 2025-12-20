@@ -233,7 +233,7 @@ async def insert_default_profile(conn: AsyncConnection, user_id: int) -> None:
     )
     await conn.commit()
 
-# Get all time XP leaderboard
+# Get all time exp leaderboard
 async def get_all_time(pool: AsyncConnectionPool, term_leaderboard: bool) -> list[dict_row]:
     if term_leaderboard:
         exp_type = "term_exp"
@@ -252,9 +252,8 @@ async def get_all_time(pool: AsyncConnectionPool, term_leaderboard: bool) -> lis
             response = await cur.fetchall()
             return response
 
-# Reset term XP
+# Reset term exp
 async def reset_term(pool: AsyncConnectionPool):
-    print("reached reset")
     query = """
                 UPDATE profiles
                 SET term_exp = 0;
@@ -263,3 +262,25 @@ async def reset_term(pool: AsyncConnectionPool):
         async with conn.cursor() as cur:
             await cur.execute(query)
             await conn.commit()
+
+# Get specific user's rank and exp
+async def get_exp_rank(pool: AsyncConnectionPool, user_id: int, term_leaderboard: bool) -> dict_row:
+    if term_leaderboard:
+        exp_type = "term_exp"
+    else:
+        exp_type = "exp"
+
+    query = f"""
+                SELECT rank, {exp_type}
+                FROM (
+                    SELECT user_id, {exp_type}, RANK() OVER (ORDER BY {exp_type} DESC) AS rank
+                    FROM profiles
+                ) ranked_profiles
+                WHERE user_id = {user_id};
+            """
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(query)
+            await conn.commit()
+            response = await cur.fetchall()
+            return response
