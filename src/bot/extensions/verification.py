@@ -251,7 +251,11 @@ loader = lightbulb.Loader()
 
 guild_id = int(os.getenv("GUILD_ID", "0"))
 verification_role_ids = os.getenv("VERIFICATION_ROLE_IDS")
-role_ids = [*map(int, verification_role_ids)] if verification_role_ids else []
+role_ids = (
+    [int(rid) for rid in verification_role_ids.split(",") if rid.strip()]
+    if verification_role_ids
+    else []
+)
 welcome_channel_id = int(os.getenv("WELCOME_CHANNEL", "0"))
 introduction_channel_id = int(os.getenv("INTRODUCTION_CHANNEL", "0"))
 
