@@ -110,10 +110,11 @@ class Profile:
                 await cur.execute(
                     """
                     UPDATE profiles
-                    SET exp = exp + %s
+                    SET exp = exp + %s,
+                        term_exp = term_exp + %s
                     WHERE user_id = %s
                     """,
-                    (amount, self.user_id),
+                    (amount, amount, self.user_id),
                 )
 
     async def set_quote(self, pool: AsyncConnectionPool, new_quote: str) -> None:
@@ -164,7 +165,6 @@ class Profile:
                     query,
                     (self.user_id,),
                 )
-
 
 async def get_profile(pool: AsyncConnectionPool, user: hikari.User) -> Profile:
     """Gets the profile of a user from the db, creates a default one of it doesn't exist
@@ -232,3 +232,55 @@ async def insert_default_profile(conn: AsyncConnection, user_id: int) -> None:
         (user_id, 0, "", "Hello!", None, None),
     )
     await conn.commit()
+
+# Get all time exp leaderboard
+async def get_all_time(pool: AsyncConnectionPool, term_leaderboard: bool) -> list[dict_row]:
+    if term_leaderboard:
+        exp_type = "term_exp"
+    else:
+        exp_type = "exp"
+
+    query = f"""
+                SELECT user_id, {exp_type}
+                FROM profiles
+                ORDER BY {exp_type} DESC
+                LIMIT 10;
+            """
+    async with pool.connection() as conn:
+        async with conn.cursor(row_factory=dict_row) as cur:
+            await cur.execute(query)
+            response = await cur.fetchall()
+            return response
+
+# Reset term exp
+async def reset_term(pool: AsyncConnectionPool):
+    query = """
+                UPDATE profiles
+                SET term_exp = 0;
+            """
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(query)
+            await conn.commit()
+
+# Get specific user's rank and exp
+async def get_exp_rank(pool: AsyncConnectionPool, user_id: int, term_leaderboard: bool) -> dict_row:
+    if term_leaderboard:
+        exp_type = "term_exp"
+    else:
+        exp_type = "exp"
+
+    query = f"""
+                SELECT rank, {exp_type}
+                FROM (
+                    SELECT user_id, {exp_type}, RANK() OVER (ORDER BY {exp_type} DESC) AS rank
+                    FROM profiles
+                ) ranked_profiles
+                WHERE user_id = {user_id};
+            """
+    async with pool.connection() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(query)
+            await conn.commit()
+            response = await cur.fetchall()
+            return response
