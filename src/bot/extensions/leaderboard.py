@@ -6,7 +6,7 @@ from .profile_utils.db import get_all_time, reset_term, get_exp_rank
 
 loader = lightbulb.Loader()
 
-leaderboard = lightbulb.Group("leaderboard", "commands related to XP leaderboards")
+leaderboard = lightbulb.Group("leaderboard", "commands related to exp leaderboards")
 
 async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, term_leaderboard: bool):
     response = await get_all_time(pool, term_leaderboard)
@@ -30,15 +30,27 @@ async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, ter
         rank += 1
 
     embed = hikari.Embed(
-        title=f"{title_string} XP Leaderboard",
-        description=f"Top 10 users by {desc_string} exp",
-        color=0xFFD700
+        title=f"{title_string} Exp Leaderboard",
+        description=f"🏆 Top 10 users by {desc_string} exp",
+        color=0xA03DA9
     )
 
+    rank_places = {
+        1: "🥇",
+        2: "🥈",
+        3: "🥉"
+    }
+
     for entry in response:
+        if entry['rank'] == 1 or entry['rank'] == 2 or entry['rank'] == 3:
+            place = rank_places[entry['rank']]
+        else:
+            place = entry['rank']
+
         embed.add_field(
-            name=f"{entry['rank']} - {entry['username']}",
-            value=f"**{entry[f'{embed_string}']} exp**",
+            # the :2 makes single digit numbers print like double to preserver alignment between emojis, 10, and single digits
+            name=f"{place:2}. {entry['username']}",
+            value=f"{entry[f'{embed_string}']} exp",
             inline=False,
         )
 
@@ -57,8 +69,14 @@ async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, ter
     user_name = user_temp.username
 
     embed.add_field(
+        name="\n",
+        value="-"*24,
+        inline=False,
+    )
+
+    embed.add_field(
         name="\n**You:**",
-        value=f"{user_rank} - {user_name}\n{user_exp} exp",
+        value=f"{user_rank}. {user_name}\n{user_exp} exp",
         inline=False,
     )
 
@@ -72,7 +90,7 @@ async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, ter
 class AllTime(
     lightbulb.SlashCommand,
     name = "alltime",
-    description = "view the 10 users with the most all-time XP"
+    description = "view the 10 users with the most all-time exp"
 ):
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
@@ -90,7 +108,7 @@ class AllTime(
 class Term(
     lightbulb.SlashCommand,
     name = "term",
-    description = "view the 10 users with the most XP this term"
+    description = "view the 10 users with the most exp this term"
 ):
     @lightbulb.invoke
     async def invoke(self, ctx: lightbulb.Context, pool: AsyncConnectionPool) -> None:
@@ -108,7 +126,7 @@ class Term(
 class Reset(
     lightbulb.SlashCommand,
     name = "reset",
-    description = "reset the term-by-term XP",
+    description = "reset the term-by-term exp",
     hooks=[lightbulb.prefab.has_permissions(hikari.Permissions.ADMINISTRATOR)],
 ):
     @lightbulb.invoke
@@ -118,8 +136,8 @@ class Reset(
         await reset_term(pool)
 
         embed = hikari.Embed(
-            title="Reset XP Leaderboard",
-            description="Term-by-term XP leaderboard successfully reset!",
+            title="Reset exp Leaderboard",
+            description="Term-by-term exp leaderboard successfully reset!",
         )
 
         await ctx.respond(embed=embed)
