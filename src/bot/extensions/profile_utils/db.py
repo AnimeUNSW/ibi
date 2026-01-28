@@ -47,36 +47,9 @@ class Profile:
     anilist_profile: str | None
     rank: int
 
-    def get_level_info(self) -> tuple[int, int, int]:
-        """
-        Calculates level info from xp
-
-        Returns:
-            (current level, remaining xp until next level, xp required for next level)
-        """
-        if self.exp <= 0:
-            return 0, self.exp, LEVEL_ONE_XP_REQ
-        lower, upper = 0, 1
-        while self.exp >= exp_for_level(upper):
-            upper *= 2
-        while lower < upper:
-            m = (lower + upper) // 2
-            if exp_for_level(m) <= self.exp:
-                lower = m + 1
-            else:
-                upper = m
-        curr_level = lower - 1
-        remaining_xp_til_next_level = self.exp - exp_for_level(curr_level)
-        xp_required_for_next_level = (
-            LEVEL_ONE_XP_REQ
-            + FIRST_XP_INC * curr_level  #
-            + XP_INC_DELTA * math.comb(curr_level, 2)
-        )
-        return curr_level, remaining_xp_til_next_level, xp_required_for_next_level
-
     @property
     def level(self) -> int:
-        return self.get_level_info()[0]
+        return get_level_info(self.exp)[0]
 
     @property
     def mal_url(self) -> str:
@@ -118,6 +91,8 @@ class Profile:
                 )
 
     async def set_quote(self, pool: AsyncConnectionPool, new_quote: str) -> None:
+        print(f"new quote = {new_quote}")
+        print(f"{self.user_id}")
         async with pool.connection() as conn:
             async with conn.cursor(row_factory=dict_row) as cur:
                 await cur.execute(
@@ -284,3 +259,30 @@ async def get_exp_rank(pool: AsyncConnectionPool, user_id: int, term_leaderboard
             await conn.commit()
             response = await cur.fetchall()
             return response
+
+def get_level_info(exp) -> tuple[int, int, int]:
+    """
+    Calculates level info from xp
+
+    Returns:
+        (current level, remaining xp until next level, xp required for next level)
+    """
+    if exp <= 0:
+        return 0, exp, LEVEL_ONE_XP_REQ
+    lower, upper = 0, 1
+    while exp >= exp_for_level(upper):
+        upper *= 2
+    while lower < upper:
+        m = (lower + upper) // 2
+        if exp_for_level(m) <= exp:
+            lower = m + 1
+        else:
+            upper = m
+    curr_level = lower - 1
+    remaining_xp_til_next_level = exp - exp_for_level(curr_level)
+    xp_required_for_next_level = (
+        LEVEL_ONE_XP_REQ
+        + FIRST_XP_INC * curr_level  #
+        + XP_INC_DELTA * math.comb(curr_level, 2)
+    )
+    return curr_level, remaining_xp_til_next_level, xp_required_for_next_level
