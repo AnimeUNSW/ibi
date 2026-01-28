@@ -2,7 +2,7 @@ import hikari
 import lightbulb
 from psycopg_pool import AsyncConnectionPool
 
-from .profile_utils.db import get_all_time, reset_term, get_exp_rank
+from .profile_utils.db import get_all_time, reset_term, get_exp_rank, get_level_info
 
 loader = lightbulb.Loader()
 
@@ -20,41 +20,71 @@ async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, ter
         desc_string = "total"
         embed_string = "exp"
 
+    # initialise as 2 because thats minimum len for discord username
+    max_username_len = 2
     rank = 1
     for row in response:
         row_id = row['user_id']
         row_user = await ctx.client.rest.fetch_user(row_id)
         row["username"] = row_user.username
+
+        if len(row["username"]) > max_username_len:
+            max_username_len = len(row["username"])
+
         row["rank"] = rank
         row.pop("user_id")
         rank += 1
 
+    embed_description = f"Top 10 users by {desc_string} exp"
+
     embed = hikari.Embed(
-        title=f"{title_string} Exp Leaderboard",
-        description=f"🏆 Top 10 users by {desc_string} exp",
+        title=f"🏆 {title_string} Exp Leaderboard 🏆",
+        description=embed_description,
         color=0xA03DA9
     )
 
+    # separating line length is either 3 + max username length (3 comes from the 3 chars of 10.) or if that would
+    # be shorter than the embed description, use that length
+    if (max_username_len + 3) > len(embed_description):
+        sep_line_len = max_username_len + 3
+    else:
+        sep_line_len = len(embed_description)
+
     rank_places = {
-        1: "🥇",
-        2: "🥈",
-        3: "🥉"
+        # used 2 thin spaces to pad medals (U+2009)
+        1: "🥇 ",
+        2: "🥈 ",
+        3: "🥉 "
     }
+
+    embed.add_field(
+        name="",
+        value="-"*sep_line_len,
+        inline=False,
+    )
 
     for entry in response:
         if entry['rank'] == 1 or entry['rank'] == 2 or entry['rank'] == 3:
             place = rank_places[entry['rank']]
         else:
-            place = entry['rank']
+            # used a ZWSP
+            place = f"​​{entry["rank"]}."
 
-        embed.add_field(
-            # the :2 makes single digit numbers print like double to preserver alignment between emojis, 10, and single digits
-            name=f"{place:2}. {entry['username']}",
-            value=f"{entry[f'{embed_string}']} exp",
-            inline=False,
-        )
+        level = get_level_info(entry[f'{embed_string}'])[0]
 
-    # need to add a field for the users own xp for that period (all time or term) and their rank
+        if term_leaderboard:
+            embed.add_field(
+                name=f"{place} {entry['username']}",
+                value=f"term level: {level}\n{desc_string} exp: {entry[f'{embed_string}']}",
+                inline=False,
+            )
+        else:
+            embed.add_field(
+                name=f"{place} {entry['username']}",
+                value=f"level: {level}\n{desc_string} exp: {entry[f'{embed_string}']}",
+                inline=False,
+            )
+
     user = ctx.member
     if user is None:
         await ctx.respond("Invalid user.")
@@ -68,17 +98,31 @@ async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, ter
     user_temp = await ctx.client.rest.fetch_user(user_id)
     user_name = user_temp.username
 
+    user_level = get_level_info(user_exp)[0]
+
+    if user_rank == 1 or user_rank == 2 or user_rank == 3:
+        user_place = rank_places[user_rank]
+    else:
+        user_place = f"{user_rank}."
+
     embed.add_field(
         name="\n",
-        value="-"*24,
+        value="-"*sep_line_len,
         inline=False,
     )
 
-    embed.add_field(
-        name="\n**You:**",
-        value=f"{user_rank}. {user_name}\n{user_exp} exp",
-        inline=False,
-    )
+    if term_leaderboard:
+        embed.add_field(
+            name="\n**You:**",
+            value=f"{user_place} {user_name}\nterm level: {user_level}\n{desc_string} exp: {user_exp}",
+            inline=False,
+        )
+    else:
+        embed.add_field(
+            name="\n**You:**",
+            value=f"{user_place} {user_name}\nlevel: {user_level}\n{desc_string} exp: {user_exp}",
+            inline=False,
+        )
 
     return embed
 

@@ -8,7 +8,7 @@ from psycopg_pool import AsyncConnectionPool
 
 from bot.extensions.profile_utils.color import get_colors, make_progress_bar
 
-from .profile_utils.db import cooldown, cooldowns, get_exp, get_profile
+from .profile_utils.db import cooldown, cooldowns, get_exp, get_profile, get_level_info
 
 loader = lightbulb.Loader()
 
@@ -92,7 +92,7 @@ class View(
         # fields = translations[self.lang]["fields"]
         fields = translations["en"]["fields"]
 
-        level, xp_remainder, xp_total = profile.get_level_info()
+        level, xp_remainder, xp_total = get_level_info(profile.exp)
         fg_color, bg_color = get_colors(user.display_avatar_url)
 
         xp_img = make_progress_bar(xp_remainder, xp_total, fg_color, bg_color)
