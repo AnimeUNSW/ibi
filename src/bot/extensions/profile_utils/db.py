@@ -91,6 +91,8 @@ class Profile:
                 )
 
     async def set_quote(self, pool: AsyncConnectionPool, new_quote: str) -> None:
+        print(f"new quote = {new_quote}")
+        print(f"{self.user_id}")
         async with pool.connection() as conn:
             async with conn.cursor(row_factory=dict_row) as cur:
                 await cur.execute(

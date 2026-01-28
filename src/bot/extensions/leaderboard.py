@@ -35,20 +35,27 @@ async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, ter
         row.pop("user_id")
         rank += 1
 
-    embed_description = f"Top 10 users by {desc_string} exp"
+    embed_description = f"Top 10 users by **{desc_string}** XP & level."
 
     embed = hikari.Embed(
-        title=f"🏆 {title_string} Exp Leaderboard 🏆",
+        title=f"🏆 {title_string} XP Leaderboard 🏆",
         description=embed_description,
         color=0xA03DA9
     )
+
+    desc_string = desc_string.capitalize()
 
     # separating line length is either 3 + max username length (3 comes from the 3 chars of 10.) or if that would
     # be shorter than the embed description, use that length
     if (max_username_len + 3) > len(embed_description):
         sep_line_len = max_username_len + 3
     else:
-        sep_line_len = len(embed_description)
+        if term_leaderboard:
+            # nicely fitting (lowkey arbitrary) length if no extra long usernames
+            sep_line_len = 27
+        else:
+            # Fibonacci
+            sep_line_len = 30
 
     rank_places = {
         # used 2 thin spaces to pad medals (U+2009)
@@ -59,7 +66,8 @@ async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, ter
 
     embed.add_field(
         name="",
-        value="-"*sep_line_len,
+        # U+23AF dividing line
+        value="⎯"*sep_line_len,
         inline=False,
     )
 
@@ -75,13 +83,13 @@ async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, ter
         if term_leaderboard:
             embed.add_field(
                 name=f"{place} {entry['username']}",
-                value=f"term level: {level}\n{desc_string} exp: {entry[f'{embed_string}']}",
+                value=f"Level: {level}\nXP: {entry[f'{embed_string}']}",
                 inline=False,
             )
         else:
             embed.add_field(
                 name=f"{place} {entry['username']}",
-                value=f"level: {level}\n{desc_string} exp: {entry[f'{embed_string}']}",
+                value=f"Level: {level}\nXP: {entry[f'{embed_string}']}",
                 inline=False,
             )
 
@@ -91,9 +99,7 @@ async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, ter
         return
     
     user_id = user.id
-
     user_data = await get_exp_rank(pool, user_id, term_leaderboard)
-
     user_rank, user_exp = user_data[0]
     user_temp = await ctx.client.rest.fetch_user(user_id)
     user_name = user_temp.username
@@ -107,20 +113,20 @@ async def gen_leaderboard(pool: AsyncConnectionPool, ctx: lightbulb.Context, ter
 
     embed.add_field(
         name="\n",
-        value="-"*sep_line_len,
+        value="⎯"*sep_line_len,
         inline=False,
     )
 
     if term_leaderboard:
         embed.add_field(
             name="\n**You:**",
-            value=f"{user_place} {user_name}\nterm level: {user_level}\n{desc_string} exp: {user_exp}",
+            value=f"{user_place} {user_name}\nLevel: {user_level}\n{desc_string} XP: {user_exp}",
             inline=False,
         )
     else:
         embed.add_field(
             name="\n**You:**",
-            value=f"{user_place} {user_name}\nlevel: {user_level}\n{desc_string} exp: {user_exp}",
+            value=f"{user_place} {user_name}\nLevel: {user_level}\n{desc_string} XP: {user_exp}",
             inline=False,
         )
 
