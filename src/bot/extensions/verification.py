@@ -223,10 +223,18 @@ def verification_message_components(lang: SupportedLanguage):
     ]
 
 
-public_ip = urlopen("https://ident.me").read().decode("utf8")
+# public_ip = urlopen("https://ident.me").read().decode("utf8")
+
 # For testing env
 # public_ip = 'localhost'
 
+def get_public_ip() -> str:
+    try:
+        return urlopen("https://ident.me", timeout=5).read().decode("utf8")
+    except Exception:
+        return os.getenv("PUBLIC_IP", "127.0.0.1")
+
+public_ip = get_public_ip()
 
 async def send_verification_email(user_info: UserInfo):
     url = f"http://{public_ip}:8000"
