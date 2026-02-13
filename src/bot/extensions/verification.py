@@ -6,8 +6,6 @@ from io import StringIO
 from typing import Literal, Self
 from urllib.request import urlopen
 
-import socket
-
 import email_validator
 import hikari
 import jwt
