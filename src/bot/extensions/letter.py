@@ -7,7 +7,7 @@ loader = lightbulb.Loader()
 letter = lightbulb.Group("letter", "commands related to love letters")
 
 command_counter = 1
-
+# Test cmomasd
 # command 1:
 # /letter submit
 # text contents of command will be put into the love letters discord channel
