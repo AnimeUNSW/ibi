@@ -198,3 +198,7 @@ cython_debug/
 
 # Zed
 .zed/
+
+
+#logs
+love_letter_logs.txt
