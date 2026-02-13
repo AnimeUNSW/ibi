@@ -232,9 +232,9 @@ def verification_message_components(lang: SupportedLanguage):
 
 def get_public_ip() -> str:
     try:
-        return urlopen("https://api.ipify.org", timeout=5).read().decode("utf8").strip()
+        return urlopen("https://ident.me", timeout=5).read().decode("utf8")
     except Exception:
-        return os.getenv("PUBLIC_IP", "127.0.0.1")
+        return os.getenv("PUBLIC_URL", "127.0.0.1")
 
 public_ip = get_public_ip()
 
