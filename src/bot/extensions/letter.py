@@ -2,7 +2,8 @@ import os
 import hikari
 import lightbulb
 
-loader = lightbulb.Loader()
+# Command is currently disabled - uncomment the line below and line at the end of the file to enable the command
+#loader = lightbulb.Loader()
 
 letter = lightbulb.Group("letter", "commands related to love letters")
 
@@ -57,7 +58,8 @@ class Submit(
 
         await ctx.respond("Anonymous love letter sent successfully", ephemeral=True)
 
-loader.command(letter)
+# disabled command
+# loader.command(letter)
 
         
 
